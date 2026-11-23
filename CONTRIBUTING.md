@@ -35,6 +35,13 @@ The tests use `node:test` and `node:assert`. Do not add a test framework.
 `react.js` is covered by a source-level test. A change that needs a runtime dependency needs an issue
 and a reason first.
 
+## Docs travel with the change
+
+Every change updates `README.md`, `docs/` and `CHANGELOG.md` in the same commit. The README and `docs/` link
+to repo files with absolute `https://github.com/01ecommerce/shopify-support-chat/blob/main/...` URLs,
+because they are republished on the wiki, where relative links break. AI agents working on this repo
+read `AGENTS.md`.
+
 ## Keep it generic
 
 Examples and tests use placeholders (`example-app`, `demo.myshopify.com`). No real widget ids, shop
@@ -52,13 +59,14 @@ domains, emails, app names or internal paths, in code, tests, docs or issues.
 1. Open an issue first for anything beyond a small fix.
 2. Branch from `main`; keep the pull request to one change.
 3. Fill in the template: what and why, the test that failed first, the `make check` output.
-4. Update `CHANGELOG.md` (under an unreleased heading) and the README if behaviour changed.
+4. Update `README.md`, `docs/` and `CHANGELOG.md` (under an unreleased heading) in the same commit as the change. `README.md` is the wiki Home and `docs/*.md` are wiki pages, published automatically; never edit the wiki by hand. `docs.test.js` catches drift.
 5. CI runs `npm test` on Node 20, 22 and 24. A maintainer reviews and merges.
 
 ## Releasing (maintainers)
 
 1. Move the `CHANGELOG.md` entries under the new version heading, and bump `version` in `package.json`
-   (semantic versioning; a change consumers must react to is a major version).
+   (semantic versioning; a change consumers must react to is a major version), and bump every install
+   URL in `README.md` and `docs/` to the new tag (`docs.test.js` enforces it).
 2. Run `make check`.
 3. Commit, then tag `vX.Y.Z` and push the commit and the tag.
 4. Create the GitHub release from the tag, with the changelog entry as its notes.

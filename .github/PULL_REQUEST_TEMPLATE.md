@@ -17,6 +17,5 @@ paste the final counts (tests, pass, fail) here
 - [ ] A failing test came first.
 - [ ] `make check` passes.
 - [ ] No runtime dependency added.
-- [ ] `CHANGELOG.md` updated.
-- [ ] README updated if behaviour changed.
+- [ ] README / docs / CHANGELOG updated.
 - [ ] No consumer-specific ids, names or paths.

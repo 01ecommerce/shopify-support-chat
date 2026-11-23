@@ -3,6 +3,19 @@
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.0.2] - 2026-11-23
+
+### Added
+- `docs/agent-setup.md`: a step-by-step setup guide written for an AI coding agent, with exact code per
+  stack and a verify checklist. The README has a paste-ready prompt for it.
+- `llms.txt` (llmstxt.org) and `AGENTS.md` (the rules for agents working on this repo; `CLAUDE.md` now
+  only imports it).
+- Docs drift tests (`docs.test.js`): install URLs match the version, every export and option is
+  documented, no relative links in the README. The tarball now also ships `docs/agent-setup.md` and `llms.txt`.
+
+### Fixed
+- The README install URL pointed at v2.0.0.
+
 ## [2.0.1] - 2026-11-23
 
 ### Fixed
@@ -45,6 +58,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 - First release: `supportChatScript`, `supportChatTag`, `escapeForInlineScript`, `IDENTITY_IS_UNVERIFIED`
   and a React `SupportChat` component that rendered an inline script.
 
+[2.0.2]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.2
 [2.0.1]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.1
 [2.0.0]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.0
 [1.0.0]: https://github.com/01ecommerce/shopify-support-chat/commits/af30278

@@ -1,7 +1,7 @@
 # shopify-support-chat
 
 [![test](https://github.com/01ecommerce/shopify-support-chat/actions/workflows/test.yml/badge.svg)](https://github.com/01ecommerce/shopify-support-chat/actions/workflows/test.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/01ecommerce/shopify-support-chat/blob/main/LICENSE)
 
 A [Brevo Conversations](https://www.brevo.com/products/conversations/) chat bubble for the **admin** side
 of a Shopify app. Merchants use it to message you, the app developer, from inside your app. Each
@@ -16,12 +16,33 @@ conversation is tagged with the shop, the merchant and the app it came from.
   it only on pages inside your app's admin.
 - **Not a way to verify who is chatting.** See [Identity is unverified](#identity-is-unverified).
 
+## Set up with an AI coding agent
+
+Most developers set this up through an AI coding agent. Paste this prompt into Claude Code, ChatGPT/Codex
+or Cursor, in your Shopify app's repository:
+
+```text
+Add the Brevo support chat bubble to this Shopify app's admin using the npm package
+@01ecommerce/shopify-support-chat. Install it from the tag tarball:
+https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.2
+Then follow node_modules/@01ecommerce/shopify-support-chat/docs/agent-setup.md exactly, step by step.
+If that file is not there, read it at
+https://github.com/01ecommerce/shopify-support-chat/blob/main/docs/agent-setup.md
+Take the identity from the server session only. Use my Brevo widget id from BREVO_CONVERSATIONS_ID;
+ask me for it, never invent one. When you finish, report the result of every item in its Verify checklist.
+```
+
+The guide is deterministic: preconditions, install, environment, the `app` id, identity, exact code for
+React Router 7, Next.js, HTML strings and plain browser code, CSP, privacy, a DO NOT list and a verify
+checklist. Machine-readable index: [llms.txt](https://github.com/01ecommerce/shopify-support-chat/blob/main/llms.txt).
+Full guide: [docs/agent-setup.md](https://github.com/01ecommerce/shopify-support-chat/blob/main/docs/agent-setup.md).
+
 ## Install
 
 Install a release tag, not a branch:
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.0
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.2
 ```
 
 Why a tag tarball: a tag does not move, and your lockfile stores an integrity hash of the tarball, so
@@ -90,6 +111,18 @@ call. It returns `false` on the server or with an empty `widgetId`.
 Why `app` matters: when one Brevo inbox serves several apps, `APP` is how you tell which app a merchant
 wrote from. Short slugs collide; the repo name does not.
 
+## API
+
+Exports of `@01ecommerce/shopify-support-chat`:
+
+- `loadSupportChat(opts, win?)`, `supportChatTag(opts)`, `supportChatScript(opts)`: the three ways to mount it (above).
+- `buildVisitor(opts)`: the visitor object passed to Brevo's `updateIntegrationData`. Throws without `app`.
+- `escapeForInlineScript(json)`: makes JSON safe inside an inline script.
+- `BREVO_WIDGET_SRC` (the widget script URL), `LOADER_ELEMENT_ID` (`brevo-conversations-loader`) and
+  `IDENTITY_IS_UNVERIFIED` (the `IDENTITY` label).
+
+Exports of `@01ecommerce/shopify-support-chat/react`: `SupportChat`.
+
 ## Where `shop` and `email` come from
 
 From the **server session**, never from the query string or anything else the browser can set.
@@ -154,13 +187,13 @@ CI runs `npm test` on Node 20, 22 and 24 for every push to `main` and every pull
 ## Contributing
 
 Issues and pull requests are welcome. Development is Docker-only and test-driven; the rules, the commit
-style and the release steps are in [CONTRIBUTING.md](CONTRIBUTING.md). Everyone taking part follows the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+style and the release steps are in [CONTRIBUTING.md](https://github.com/01ecommerce/shopify-support-chat/blob/main/CONTRIBUTING.md). Everyone taking part follows the
+[Code of Conduct](https://github.com/01ecommerce/shopify-support-chat/blob/main/CODE_OF_CONDUCT.md).
 
 ## Security
 
-Report a vulnerability privately, never in a public issue: see [SECURITY.md](SECURITY.md).
+Report a vulnerability privately, never in a public issue: see [SECURITY.md](https://github.com/01ecommerce/shopify-support-chat/blob/main/SECURITY.md).
 
 ## License
 
-[MIT](LICENSE), copyright 2026 01ecommerce.
+[MIT](https://github.com/01ecommerce/shopify-support-chat/blob/main/LICENSE), copyright 2026 01ecommerce.

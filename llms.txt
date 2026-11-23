@@ -1,0 +1,13 @@
+# shopify-support-chat
+
+> A Brevo Conversations chat bubble for the admin side of a Shopify app: merchants message the app developer from inside the embedded app, and each conversation is tagged with the shop, the merchant and the app. Zero runtime dependencies, ESM, MIT. Install a release tag tarball, never a branch. Admin pages only, never a storefront. Visitor identity is unverified by design.
+
+## Docs
+
+- [Agent setup guide](https://github.com/01ecommerce/shopify-support-chat/blob/main/docs/agent-setup.md): deterministic steps for an AI coding agent integrating the package into a Shopify app, with exact code per stack and a verify checklist
+- [README](https://github.com/01ecommerce/shopify-support-chat/blob/main/README.md): install, usage, options, CSP, privacy
+
+## Optional
+
+- [Changelog](https://github.com/01ecommerce/shopify-support-chat/blob/main/CHANGELOG.md): what changed in each release
+- [Security policy](https://github.com/01ecommerce/shopify-support-chat/blob/main/SECURITY.md): how to report a vulnerability privately
