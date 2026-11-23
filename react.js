@@ -1,9 +1,12 @@
-import { createElement } from "react";
-import { supportChatScript } from "./index.js";
+import { useEffect } from "react";
+import { loadSupportChat } from "./index.js";
 
-/** Mount once in the layout that wraps every admin page. */
-export function SupportChat(props) {
-  const __html = supportChatScript(props);
-  if (!__html) return null;
-  return createElement("script", { suppressHydrationWarning: true, dangerouslySetInnerHTML: { __html } });
+/** Mount once in the layout that wraps every admin page.
+ *  Loads the widget from the browser, so it works wherever it is mounted,
+ *  including layouts that render their children only after mount. */
+export function SupportChat({ widgetId, app, shop, email, merchantName }) {
+  useEffect(() => {
+    loadSupportChat({ widgetId, app, shop, email, merchantName });
+  }, [widgetId, app, shop, email, merchantName]);
+  return null;
 }

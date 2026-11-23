@@ -1,12 +1,15 @@
-/** Brevo Conversations support chat for our Shopify apps (merchant → us).
- *  Lifted from loyalty-platform-copy/dashboard/app/components/SupportChat.tsx.
+/** Brevo Conversations support chat for Shopify app admin pages
+ *  (merchant -> the app's developer).
  *
  *  Admin pages only. Never render on a storefront: that fails app review.
  *
  *  The visitor attributes are set in the browser, so they are a CLAIM, not a
- *  fact. Brevo has no identity verification, so we label them UNVERIFIED in
- *  the support panel instead. Never send internal ids (merchant/tenant UUIDs).
+ *  fact. Brevo has no identity verification, so they are labelled UNVERIFIED
+ *  in the support panel. Never send internal ids (merchant or tenant ids).
  */
+
+export const BREVO_WIDGET_SRC = "https://conversations-widget.brevo.com/brevo-conversations.js";
+export const LOADER_ELEMENT_ID = "brevo-conversations-loader";
 
 export const IDENTITY_IS_UNVERIFIED =
   "UNVERIFIED — set by the browser, not by us. Confirm before acting on it.";
@@ -22,27 +25,70 @@ export function escapeForInlineScript(json) {
     .replace(/\u2029/g, "\\u2029");
 }
 
-/** The inline script body that loads the widget and identifies the merchant.
- *  Returns "" when widgetId is empty, so dev/CI get no bubble. */
-export function supportChatScript({ widgetId, app, shop, email, merchantName }) {
-  if (!widgetId) return "";
-  if (!app) throw new Error("supportChatScript: `app` is required (e.g. 'loyalty')");
-  const visitor = escapeForInlineScript(JSON.stringify({
+function omitUndefined(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+}
+
+/** The visitor object Brevo's `updateIntegrationData` takes. Undefined fields are omitted. */
+export function buildVisitor({ app, shop, email, merchantName }) {
+  if (!app) throw new Error("buildVisitor: `app` is required (a stable unique id for your app)");
+  return omitUndefined({
     email,
     firstName: merchantName,
-    attributes: { SHOP: shop, MERCHANT: merchantName, APP: app, IDENTITY: IDENTITY_IS_UNVERIFIED },
-  }));
+    attributes: omitUndefined({ SHOP: shop, MERCHANT: merchantName, APP: app, IDENTITY: IDENTITY_IS_UNVERIFIED }),
+  });
+}
+
+/** Load the widget from the browser and identify the merchant.
+ *  Safe to call on every page load or render: the script is added once, the
+ *  merchant is identified again on each call (the widget's cookie can drop
+ *  inside a third-party iframe).
+ *  Returns false when there is no `window` (server render) or no widget id. */
+export function loadSupportChat(opts, win = globalThis.window) {
+  if (!win) return false;
+  const { widgetId } = opts;
+  if (!widgetId) return false;
+  const visitor = buildVisitor(opts);
+  const doc = win.document;
+
+  win.BrevoConversationsID = widgetId;
+  win.BrevoConversations =
+    win.BrevoConversations ||
+    function () {
+      (win.BrevoConversations.q = win.BrevoConversations.q || []).push(arguments);
+    };
+
+  if (!doc.getElementById(LOADER_ELEMENT_ID)) {
+    const s = doc.createElement("script");
+    s.async = true;
+    s.src = BREVO_WIDGET_SRC;
+    s.id = LOADER_ELEMENT_ID;
+    doc.head.appendChild(s);
+  }
+
+  win.BrevoConversations("updateIntegrationData", visitor);
+  return true;
+}
+
+/** The inline script body that loads the widget and identifies the merchant.
+ *  Returns "" when widgetId is empty, so dev/CI get no bubble. */
+export function supportChatScript(opts) {
+  const { widgetId } = opts;
+  if (!widgetId) return "";
+  if (!opts.app) throw new Error("supportChatScript: `app` is required (a stable unique id for your app)");
+  const visitor = escapeForInlineScript(JSON.stringify(buildVisitor(opts)));
   return `(function(d,w,c){
   w.BrevoConversationsID=${escapeForInlineScript(JSON.stringify(widgetId))};
   w[c]=w[c]||function(){(w[c].q=w[c].q||[]).push(arguments)};
   var s=d.createElement('script');s.async=true;
-  s.src='https://conversations-widget.brevo.com/brevo-conversations.js';
+  s.src='${BREVO_WIDGET_SRC}';
+  s.id='${LOADER_ELEMENT_ID}';
   d.head.appendChild(s);
   w[c]('updateIntegrationData',${visitor});
 })(document,window,'BrevoConversations');`;
 }
 
-/** Full `<script>` tag, for apps that render HTML strings (Express, Liquid-free templates). */
+/** Full `<script>` tag, for apps that render HTML strings (Express, plain templates). */
 export function supportChatTag(opts) {
   const js = supportChatScript(opts);
   return js ? `<script>${js}</script>` : "";

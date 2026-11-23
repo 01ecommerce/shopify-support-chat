@@ -1,8 +1,17 @@
 {
-  "name": "@exc/shopify-support-chat",
-  "version": "1.0.0",
+  "name": "@01ecommerce/shopify-support-chat",
+  "version": "2.0.0",
+  "description": "Brevo Conversations chat bubble for Shopify app admin pages: merchants message the app developer from inside the embedded app.",
   "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/01ecommerce/shopify-support-chat.git"
+  },
+  "homepage": "https://github.com/01ecommerce/shopify-support-chat#readme",
+  "bugs": "https://github.com/01ecommerce/shopify-support-chat/issues",
+  "keywords": ["shopify", "shopify-app", "brevo", "brevo-conversations", "support-chat", "embedded-app"],
+  "engines": { "node": ">=18" },
   "exports": {
     ".": { "types": "./index.d.ts", "default": "./index.js" },
     "./react": { "types": "./react.d.ts", "default": "./react.js" }

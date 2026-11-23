@@ -1,47 +1,155 @@
 # shopify-support-chat
 
-The Brevo Conversations chat bubble from the loyalty app, packaged so any of our
-Shopify apps can add it. Merchants use it to message us from the **app admin**.
-Never put it on a storefront.
+A [Brevo Conversations](https://www.brevo.com/products/conversations/) chat bubble for the **admin** side
+of a Shopify app. Merchants use it to message you, the app developer, from inside your app. Each
+conversation is tagged with the shop, the merchant and the app it came from.
 
-All apps share one widget id, `6a855703dd6e8294c20f34e8`, so every chat lands in
-one inbox. The `APP` attribute shows which app the merchant wrote from.
+- Zero runtime dependencies, ESM, no build step.
+- React component for embedded apps, plus a plain `<script>` string for apps that render HTML.
 
-## Add it to an app
+## What it is not
 
-1. Install:
-   ```sh
-   npm install github:01ecommerce/shopify-support-chat
-   # or, local only (breaks Docker/CI builds that can't see the sibling folder):
-   npm install ../shopify-support-chat
-   ```
-2. Env: `BREVO_CONVERSATIONS_ID=6a855703dd6e8294c20f34e8`. Leave it unset in dev and CI so no bubble shows.
-3. Mount it once, in the layout that wraps every admin page.
+- **Not for storefronts.** Never render it on a shop's storefront; that fails Shopify app review. Mount
+  it only on pages inside your app's admin.
+- **Not a way to verify who is chatting.** See [Identity is unverified](#identity-is-unverified).
 
-**React / Remix / Next**
+## Install
+
+Install a release tag, not a branch:
+
+```sh
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.0
+```
+
+Why a tag tarball: a tag does not move, and your lockfile stores an integrity hash of the tarball, so
+every install gets the same bytes. It needs no `git` binary and no credentials, so it also works in
+Docker builds and CI. A `github:` dependency or a branch URL resolves to whatever the branch holds that
+day.
+
+Requires Node 18 or later. React 17 or later is an optional peer dependency (only for `/react`).
+
+## Usage
+
+You need a Brevo Conversations widget id, from your Brevo account's Conversations installation settings.
+
+### React (any layout)
+
 ```tsx
-import { SupportChat } from "@exc/shopify-support-chat/react";
+import { SupportChat } from "@01ecommerce/shopify-support-chat/react";
 
-// loader: widgetId: process.env.BREVO_CONVERSATIONS_ID ?? "", shop: session.shop, email
-<SupportChat widgetId={chat.widgetId} app="reviews" shop={chat.shop} email={chat.email} merchantName={shop.name} />
+// Values come from your server session, via your loader or props.
+<SupportChat
+  widgetId={chat.widgetId}
+  app="my-shopify-app"
+  shop={chat.shop}
+  email={chat.email}
+  merchantName={chat.merchantName}
+/>
 ```
 
-**Anything that renders HTML strings**
+Mount it once, in the layout that wraps every admin page. It loads the widget from the browser, in an
+effect, and renders nothing, so it works wherever it is mounted: server-rendered pages, and layouts
+that render their children only after mount. (Version 1 rendered an inline script, which React never
+executes when it inserts it on the client.)
+
+### HTML strings
+
 ```js
-import { supportChatTag } from "@exc/shopify-support-chat";
-html += supportChatTag({ widgetId: process.env.BREVO_CONVERSATIONS_ID, app: "reviews", shop, email, merchantName });
+import { supportChatTag } from "@01ecommerce/shopify-support-chat";
+
+html += supportChatTag({ widgetId: process.env.BREVO_CONVERSATIONS_ID, app: "my-shopify-app", shop, email, merchantName });
 ```
 
-## Rules
-- `app` is required. Set it per app: `loyalty`, `reviews`, `dashboard`, `buildingcode`, and so on.
-- Take `shop` and `email` from the server session. Never take them from the query string.
-- Never send internal merchant or tenant ids.
-- Everything the widget sends is set in the browser, so it can be faked. Brevo cannot verify it, so the panel shows `IDENTITY: UNVERIFIED`. Confirm who you're talking to before acting on billing or data requests.
-- If the app sets a CSP `script-src`, allow `https://conversations-widget.brevo.com`.
-- List Brevo as a subprocessor in the app's privacy policy.
-- In an embedded app, test in Safari. The widget's cookie can drop inside the admin iframe, which is why the merchant is identified again on every page load.
+`supportChatScript(opts)` returns the script body without the `<script>` tag. Both return `""` when
+`widgetId` is empty. Values are escaped, so a shop name cannot break out of the tag.
 
-Background: `loyalty-platform-copy/docs/SUPPORT-CHAT.md`.
+### Plain browser code
 
-## Test
-`npm test` (uses `node:test`, no dependencies).
+```js
+import { loadSupportChat } from "@01ecommerce/shopify-support-chat";
+
+loadSupportChat({ widgetId, app: "my-shopify-app", shop, email, merchantName });
+```
+
+Safe to call on every page load. It adds the Brevo script once and identifies the merchant on every
+call. It returns `false` on the server or with an empty `widgetId`.
+
+## Options
+
+| Option | Required | What it is |
+|---|---|---|
+| `widgetId` | yes (empty = no bubble) | Your Brevo Conversations widget id. |
+| `app` | yes | A stable, unique id for your app. Shown to support as the `APP` attribute. Use your repo name. Calls without it throw. |
+| `shop` | no | `xxx.myshopify.com`, from the server session. Shown as `SHOP`. |
+| `email` | no | The merchant's email, from the server session. |
+| `merchantName` | no | Shown as `MERCHANT` and as the visitor's first name. |
+
+Why `app` matters: when one Brevo inbox serves several apps, `APP` is how you tell which app a merchant
+wrote from. Short slugs collide; the repo name does not.
+
+## Where `shop` and `email` come from
+
+From the **server session**, never from the query string or anything else the browser can set.
+
+In an embedded app that uses offline access tokens, the session token carries no user email. Ask the
+Admin API for the store's own address and name, once per shop, and cache it:
+
+```graphql
+query SupportChatIdentity { shop { name email myshopifyDomain } }
+```
+
+That is the store's email, not necessarily the person typing. If the query fails, render the widget
+with `shop` alone rather than breaking the page.
+
+## Identity is unverified
+
+Everything the widget sends is set in the browser, so a visitor can fake it. Brevo has no identity
+verification, so the support panel shows `IDENTITY: UNVERIFIED` on every conversation. Support staff
+must confirm who they are talking to, out of band, before acting on a billing or data request.
+
+Never pass internal merchant or tenant ids. They would be a browser-set claim too, and they would leak.
+
+## Content Security Policy
+
+If your app sets a CSP, allow the widget's script host:
+
+```text
+script-src https://conversations-widget.brevo.com
+```
+
+The loader passes the visitor as an object, not as inline script, so no `'unsafe-inline'` is needed. The
+widget itself opens further connections to Brevo; check your browser console for blocked requests after
+turning a CSP on.
+
+## Privacy
+
+The widget sends the merchant's chat messages and the attributes above to Brevo. List Brevo as a
+subprocessor in your privacy policy before you ship the widget.
+
+## Safari and iframes
+
+An embedded app runs in an iframe inside the Shopify admin. Browsers such as Safari can drop the
+widget's cookie there, which would make the conversation look anonymous on the next page. That is why
+the merchant is identified again on every call. Test in Safari.
+
+## Development and CI: leave the widget id unset
+
+With an empty `widgetId` nothing is loaded and nothing is added to the page. Leave your widget id
+variable unset in development and CI.
+
+## Development
+
+Tests run in Docker only (`node:22-alpine`), using `node:test`:
+
+```sh
+make test     # or: make check
+make clean    # removes leftover test containers
+```
+
+## Releasing
+
+1. Update `CHANGELOG.md` and bump `version` in `package.json` (semantic versioning; a behaviour change
+   that consumers must react to is a major version).
+2. Run `make check`.
+3. Commit, tag `vX.Y.Z`, and push the commit and the tag.
+4. Consumers install `.../tar.gz/refs/tags/vX.Y.Z`.
