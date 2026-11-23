@@ -15,8 +15,8 @@ test("LICENSE is the MIT text and package.json says MIT", () => {
   assert.equal(pkg.license, "MIT");
 });
 
-test("engines.node is >=22 (Node 18 and 20 are end-of-life)", () => {
-  assert.equal(pkg.engines.node, ">=22");
+test("engines.node is >=20 (the package is browser-first; Node-side code is ESM and string building)", () => {
+  assert.equal(pkg.engines.node, ">=20");
 });
 
 test("the tarball ships exactly the public files", () => {

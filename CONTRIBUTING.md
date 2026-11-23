@@ -8,7 +8,7 @@ work is licensed under the [MIT License](LICENSE).
 
 ## Development is Docker-only
 
-There is no host Node in the workflow. Tests run in a pinned `node:22-alpine` container, so every
+There is no host Node in the workflow. Tests run in a pinned `node:22-alpine` container (22 is the development version; the supported floor is Node 20, see `engines`), so every
 contributor and CI run the same Node and nothing depends on what is installed on your machine.
 
 ```sh
@@ -53,7 +53,7 @@ domains, emails, app names or internal paths, in code, tests, docs or issues.
 2. Branch from `main`; keep the pull request to one change.
 3. Fill in the template: what and why, the test that failed first, the `make check` output.
 4. Update `CHANGELOG.md` (under an unreleased heading) and the README if behaviour changed.
-5. CI runs `npm test` on Node 22 and 24. A maintainer reviews and merges.
+5. CI runs `npm test` on Node 20, 22 and 24. A maintainer reviews and merges.
 
 ## Releasing (maintainers)
 

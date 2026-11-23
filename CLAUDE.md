@@ -1,6 +1,6 @@
 # shopify-support-chat
 
-A tiny public, MIT-licensed npm-style package (Node >= 22): the Brevo Conversations chat bubble for
+A tiny public, MIT-licensed npm-style package (Node >= 20): the Brevo Conversations chat bubble for
 Shopify app **admin** pages. ESM, no build step, zero runtime dependencies.
 
 ## Rules

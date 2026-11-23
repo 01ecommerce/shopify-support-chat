@@ -3,6 +3,13 @@
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] - 2026-11-23
+
+### Fixed
+- `engines.node` is lowered to `>=20` (was `>=22` in 2.0.0), so consumers on Node 20 with
+  `engine-strict=true` can install it. The package mostly runs in the browser and its Node-side code is
+  ESM and string building. CI now also tests Node 20.
+
 ## [2.0.0]
 
 ### Changed (breaking)
@@ -38,5 +45,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - First release: `supportChatScript`, `supportChatTag`, `escapeForInlineScript`, `IDENTITY_IS_UNVERIFIED`
   and a React `SupportChat` component that rendered an inline script.
 
+[2.0.1]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.1
 [2.0.0]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.0
 [1.0.0]: https://github.com/01ecommerce/shopify-support-chat/commits/af30278

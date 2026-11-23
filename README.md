@@ -29,7 +29,7 @@ every install gets the same bytes. It needs no `git` binary and no credentials, 
 Docker builds and CI. A `github:` dependency or a branch URL resolves to whatever the branch holds that
 day.
 
-Requires Node 22 or later (the supported LTS lines are 22 and 24). React 17 or later is an optional peer dependency (only for `/react`).
+Requires Node 20 or later (CI tests 20, 22 and 24). React 17 or later is an optional peer dependency (only for `/react`).
 
 ## Usage
 
@@ -149,7 +149,7 @@ make test     # or: make check
 make clean    # removes leftover test containers
 ```
 
-CI runs `npm test` on Node 22 and 24 for every push to `main` and every pull request.
+CI runs `npm test` on Node 20, 22 and 24 for every push to `main` and every pull request.
 
 ## Contributing
 
