@@ -11,7 +11,7 @@ one inbox. The `APP` attribute shows which app the merchant wrote from.
 
 1. Install:
    ```sh
-   npm install github:<org>/shopify-support-chat   # once pushed
+   npm install github:01ecommerce/shopify-support-chat
    # or, local only (breaks Docker/CI builds that can't see the sibling folder):
    npm install ../shopify-support-chat
    ```
