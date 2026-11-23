@@ -23,6 +23,11 @@ Shopify app **admin** pages. ESM, no build step, zero runtime dependencies.
   job: the wiki is generated, never hand-edited. `docs.test.js` guards drift (install URLs match the
   version, every export and `ChatVisitor` field is documented, README has no relative links). The README
   and docs link to repo files with absolute `https://github.com/01ecommerce/shopify-support-chat/blob/main/...` URLs.
+- **The wiki is generated, never hand-edited.** `scripts/build-wiki.js` turns `README.md` into Home,
+  each `docs/*.md` into a page (`agent-setup.md` becomes `Agent-Setup`) and `CHANGELOG.md` into Changelog,
+  plus a sidebar and a footer. `.github/workflows/wiki.yml` publishes it to the wiki's `master` on every
+  push to `main` that touches those files. A new `docs/*.md` appears in the wiki by itself: add no list
+  anywhere. `wiki.test.js` guards it. Preview with `make wiki-preview` (writes `.wiki-preview/` in Docker).
 - **Every release** = a `CHANGELOG.md` entry, the `package.json` version, and a tag `vX.Y.Z`; every install URL in the README and docs bumped to it (the test enforces it). Consumers
   install the tag tarball, so a tag is the release.
 - **No Claude or AI attribution** in commit messages or pull requests.

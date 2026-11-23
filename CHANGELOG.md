@@ -3,6 +3,12 @@
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- The wiki is generated from README.md, docs/ and CHANGELOG.md on every push to main
+  (`scripts/build-wiki.js` and `.github/workflows/wiki.yml`). Not part of the npm tarball, so no release.
+
 ## [2.0.2] - 2026-11-23
 
 ### Added

@@ -42,6 +42,17 @@ to repo files with absolute `https://github.com/01ecommerce/shopify-support-chat
 because they are republished on the wiki, where relative links break. AI agents working on this repo
 read `AGENTS.md`.
 
+## The wiki is generated
+
+The GitHub wiki is a mirror, never a place to edit. `scripts/build-wiki.js` builds it from `README.md`
+(Home), `docs/*.md` (one page each, `agent-setup.md` becomes `Agent-Setup`) and `CHANGELOG.md`, and
+`.github/workflows/wiki.yml` publishes it on every push to `main` that touches them. Changes made in the
+wiki are overwritten. A new `docs/*.md` file appears in the wiki and its sidebar automatically.
+
+```sh
+make wiki-preview    # build the pages in Docker into ./.wiki-preview/ (git-ignored) and list them
+```
+
 ## Keep it generic
 
 Examples and tests use placeholders (`example-app`, `demo.myshopify.com`). No real widget ids, shop

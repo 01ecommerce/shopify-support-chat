@@ -39,6 +39,15 @@ test("the tarball ships exactly the public files", () => {
   ]);
 });
 
+test("the build script and its test stay out of the tarball (they are repo tooling, not the package)", () => {
+  const out = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+    cwd: new URL(".", import.meta.url),
+    encoding: "utf8",
+  });
+  const shipped = JSON.parse(out)[0].files.map((f) => f.path);
+  assert.deepEqual(shipped.filter((f) => f.startsWith("scripts/") || f === "wiki.test.js"), []);
+});
+
 test("every exports target exists on disk", () => {
   const targets = [];
   const walk = (v) => (typeof v === "string" ? targets.push(v) : Object.values(v).forEach(walk));

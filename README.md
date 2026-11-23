@@ -184,6 +184,8 @@ make clean    # removes leftover test containers
 
 CI runs `npm test` on Node 20, 22 and 24 for every push to `main` and every pull request.
 
+The GitHub wiki is generated from this README, `docs/` and the changelog on every push to `main`; it is never edited by hand.
+
 ## Contributing
 
 Issues and pull requests are welcome. Development is Docker-only and test-driven; the rules, the commit
