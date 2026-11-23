@@ -1,5 +1,8 @@
 # shopify-support-chat
 
+[![test](https://github.com/01ecommerce/shopify-support-chat/actions/workflows/test.yml/badge.svg)](https://github.com/01ecommerce/shopify-support-chat/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A [Brevo Conversations](https://www.brevo.com/products/conversations/) chat bubble for the **admin** side
 of a Shopify app. Merchants use it to message you, the app developer, from inside your app. Each
 conversation is tagged with the shop, the merchant and the app it came from.
@@ -26,7 +29,7 @@ every install gets the same bytes. It needs no `git` binary and no credentials, 
 Docker builds and CI. A `github:` dependency or a branch URL resolves to whatever the branch holds that
 day.
 
-Requires Node 18 or later. React 17 or later is an optional peer dependency (only for `/react`).
+Requires Node 22 or later (the supported LTS lines are 22 and 24). React 17 or later is an optional peer dependency (only for `/react`).
 
 ## Usage
 
@@ -146,10 +149,18 @@ make test     # or: make check
 make clean    # removes leftover test containers
 ```
 
-## Releasing
+CI runs `npm test` on Node 22 and 24 for every push to `main` and every pull request.
 
-1. Update `CHANGELOG.md` and bump `version` in `package.json` (semantic versioning; a behaviour change
-   that consumers must react to is a major version).
-2. Run `make check`.
-3. Commit, tag `vX.Y.Z`, and push the commit and the tag.
-4. Consumers install `.../tar.gz/refs/tags/vX.Y.Z`.
+## Contributing
+
+Issues and pull requests are welcome. Development is Docker-only and test-driven; the rules, the commit
+style and the release steps are in [CONTRIBUTING.md](CONTRIBUTING.md). Everyone taking part follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+Report a vulnerability privately, never in a public issue: see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE), copyright 2026 01ecommerce.

@@ -1,11 +1,14 @@
 # shopify-support-chat
 
-A tiny public npm-style package: the Brevo Conversations chat bubble for Shopify app **admin** pages.
-ESM, no build step, zero runtime dependencies.
+A tiny public, MIT-licensed npm-style package (Node >= 22): the Brevo Conversations chat bubble for
+Shopify app **admin** pages. ESM, no build step, zero runtime dependencies.
 
 ## Rules
 - **Docker only.** Run tests with `make test` (or `make check`). Never host `node` or `npm`.
 - **TDD.** A failing test first, then the code. A guard gets a mutation check: break it, see the test fail, revert.
+- **Community files stay current.** `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`,
+  `CODE_OF_CONDUCT.md` and `.github/` stay current; `package.test.js` pins the license, `engines.node`
+  and the exact tarball file set. CI actions are pinned by commit SHA.
 - **Zero runtime dependencies.** React is an optional peer dependency and is not installed here, so
   `react.js` is covered by a source-level test.
 - **Generalized.** Nothing specific to one consumer: no widget id, no app or product names, no internal

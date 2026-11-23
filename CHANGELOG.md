@@ -13,6 +13,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - The package is renamed `@01ecommerce/shopify-support-chat` (was `@exc/shopify-support-chat`). Update
   your imports.
 - The widget `<script>` now carries the id `brevo-conversations-loader`.
+- `engines.node` is now `>=22` (was `>=18`; Node 18 and 20 are end-of-life). The package tarball now
+  also carries `README.md`, `LICENSE` and `CHANGELOG.md`.
 
 ### Added
 - `loadSupportChat(opts, win?)`: the browser loader behind the React component. It adds the Brevo script
@@ -20,6 +22,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `buildVisitor(opts)`: the visitor object passed to Brevo, with undefined fields omitted.
 - Exports `BREVO_WIDGET_SRC` and `LOADER_ELEMENT_ID`.
 - `make test` / `make check` run the tests in Docker.
+- MIT license (`LICENSE`, `license` and `author` in `package.json`).
+- Community files: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1),
+  issue forms and a pull-request template.
+- CI: a GitHub Actions workflow running the tests on Node 22 and 24, with actions pinned by commit SHA,
+  and Dependabot for the actions.
+- `.editorconfig`, `.gitattributes`, `.nvmrc`, and `"sideEffects": false`.
+- Tests for the license, the engines range, the exports targets and the exact tarball file set.
 
 ### Unchanged
 - `supportChatScript` and `supportChatTag` (HTML-string apps) behave as before, with the same escaping.
