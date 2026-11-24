@@ -23,7 +23,7 @@ Check all four. If one is false, stop and ask the developer; do not guess.
 ## Step 1: install the release tag
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.3
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.1.0
 ```
 
 Use a **tag** tarball, never a branch and never a `github:` dependency. A tag does not move, and the
@@ -206,14 +206,14 @@ check each item. Report the result of every one, including a FAIL with what you 
 |---|---|---|---|
 | 1 | In the browser devtools, **scoped to the app iframe** (the embedded app runs inside an iframe), evaluate `window.BrevoConversationsID`. | Your widget id, exactly. | `undefined` or `""` (the variable is unset, empty, or the layout does not mount `SupportChat`); or you evaluated it in the top Shopify admin frame, not the app iframe. |
 | 2 | In the same frame, run `document.querySelectorAll('#brevo-conversations-loader').length`. | `1`, and it is still `1` after navigating to another admin page. | `0` (not mounted, or a CSP blocks the script) or `2` or more (mounted twice, or a second Brevo snippet exists). |
-| 3 | Open the bubble and send a test message. Open **your own** Brevo inbox. | The message arrives from a visitor with the email and first name you passed, and with the properties `APP` (your `app` value), `SHOP` (`demo.myshopify.com` style) and `IDENTITY: UNVERIFIED`. | No message (wrong widget id, or a CSP or ad blocker blocks `conversations-widget.brevo.com`); or `APP` or `SHOP` is missing (the option was not passed), or the visitor has no email or name when you passed them (the package is older than v2.0.3, which nested the fields where Brevo ignores them). |
+| 3 | Open the bubble and send a test message. Open **your own** Brevo inbox. | The message arrives from a visitor with the email and first name you passed, and with Last name = your `app` value and Notes = `<shop> · UNVERIFIED — set by the browser, not by us. Confirm before acting on it.` (`demo.myshopify.com` style shop). The custom `APP`, `SHOP`, `MERCHANT` and `IDENTITY` keys show only if your Brevo account has contact attributes with those names. | No message (wrong widget id, or a CSP or ad blocker blocks `conversations-widget.brevo.com`); or Last name is empty or Notes lacks the shop (the `app` or `shop` option was not passed), or the visitor has no email or name when you passed them (the package is older than v2.0.3, which nested the fields where Brevo ignores them; Last name and Notes need v2.1.0 or later). |
 | 4 | Open a storefront page of the shop and view the page source. | It contains no `brevo`. | Any `brevo` text: the widget is on the storefront. Remove it; this fails app review. |
-| 5 | In Safari, open the app, send a message, then reload. | The properties (`SHOP`, `APP`) are still present on the conversation after the reload. | The conversation looks anonymous after the reload (Safari dropped the widget's cookie inside the iframe). Confirm the loader runs on every page load. |
+| 5 | In Safari, open the app, send a message, then reload. | Last name and Notes are still present on the conversation after the reload. | The conversation looks anonymous after the reload (Safari dropped the widget's cookie inside the iframe). Confirm the loader runs on every page load. |
 
 ## The support-staff rule
 
 Everything the widget sends is set in the browser, so a visitor can fake it. Brevo has no identity
-verification, so every conversation shows `IDENTITY: UNVERIFIED`. **Support staff must confirm who they
+verification, so every conversation carries `UNVERIFIED` in the visitor's Notes field. **Support staff must confirm who they
 are talking to, out of band, before acting on a billing or data request.**
 
 ## API reference
@@ -223,10 +223,10 @@ All exports of `@01ecommerce/shopify-support-chat`:
 - `loadSupportChat(opts, win?)`: browser loader; returns `false` on the server or with an empty `widgetId`.
 - `supportChatTag(opts)`: a `<script>` tag string, or `""` without a `widgetId`.
 - `supportChatScript(opts)`: the inline script body without the tag.
-- `buildVisitor(opts)`: the flat visitor object passed to Brevo's `updateIntegrationData` (`email`, `firstName`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`). Brevo takes only string, number, boolean or `null` values, with custom properties as top-level keys, so nothing is nested ([Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)); throws without `app`.
+- `buildVisitor(opts)`: the flat visitor object passed to Brevo's `updateIntegrationData` (`email`, `firstName`, `lastName`, `notes`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`). Brevo takes only string, number, boolean or `null` values, with custom properties as top-level keys, so nothing is nested ([Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)); throws without `app`. `lastName` is the `app` and `notes` is `<shop> · UNVERIFIED…`: standard Brevo fields, shown in every account. The custom keys show only if the account has contact attributes with those names. Brevo: "If custom properties set in `updateIntegrationData` match existing contact attributes, they sync with your Contacts database. Otherwise, they're available in Conversations only." Creating those attributes has not been tested.
 - `escapeForInlineScript(json)`: makes JSON safe inside an inline script.
 - `BREVO_WIDGET_SRC`: the widget script URL. `LOADER_ELEMENT_ID`: the script element id, `brevo-conversations-loader`.
-- `IDENTITY_IS_UNVERIFIED`: the label sent as the `IDENTITY` property.
+- `IDENTITY_IS_UNVERIFIED`: the label sent as the `IDENTITY` property and in `notes`.
 
 Exports of `@01ecommerce/shopify-support-chat/react`: `SupportChat`, a component that renders nothing.
 
@@ -235,10 +235,10 @@ The options (type `ChatVisitor`):
 | Option | Required | What it is |
 |---|---|---|
 | `widgetId` | yes (empty = no bubble) | The developer's Brevo Conversations widget id. |
-| `app` | yes | A stable, unique id for the app (the repository name). Shown as `APP`. |
-| `shop` | no | `xxx.myshopify.com`, from the server session. Shown as `SHOP`. |
+| `app` | yes | A stable, unique id for the app (the repository name). Shown as the visitor's last name (`lastName`) and as `APP`. |
+| `shop` | no | `xxx.myshopify.com`, from the server session. Shown in the visitor's notes (`notes`) and as `SHOP`. |
 | `email` | no | The store's email, from the server session. |
-| `merchantName` | no | Shown as `MERCHANT` and as the visitor's first name. |
+| `merchantName` | no | Shown as `MERCHANT` and as the visitor's first name (`firstName`). |
 
 More: [README](https://github.com/01ecommerce/shopify-support-chat/blob/main/README.md),
 [CHANGELOG](https://github.com/01ecommerce/shopify-support-chat/blob/main/CHANGELOG.md),

@@ -24,7 +24,7 @@ or Cursor, in your Shopify app's repository:
 ```text
 Add the Brevo support chat bubble to this Shopify app's admin using the npm package
 @01ecommerce/shopify-support-chat. Install it from the tag tarball:
-https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.3
+https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.1.0
 Then follow node_modules/@01ecommerce/shopify-support-chat/docs/agent-setup.md exactly, step by step.
 If that file is not there, read it at
 https://github.com/01ecommerce/shopify-support-chat/blob/main/docs/agent-setup.md
@@ -42,7 +42,7 @@ Full guide: [docs/agent-setup.md](https://github.com/01ecommerce/shopify-support
 Install a release tag, not a branch:
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.3
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.1.0
 ```
 
 Why a tag tarball: a tag does not move, and your lockfile stores an integrity hash of the tarball, so
@@ -103,26 +103,37 @@ call. It returns `false` on the server or with an empty `widgetId`.
 | Option | Required | What it is |
 |---|---|---|
 | `widgetId` | yes (empty = no bubble) | Your Brevo Conversations widget id. |
-| `app` | yes | A stable, unique id for your app. Shown to support as the `APP` property. Use your repo name. Calls without it throw. |
-| `shop` | no | `xxx.myshopify.com`, from the server session. Shown as `SHOP`. |
+| `app` | yes | A stable, unique id for your app. Shown to support as the visitor's last name (`lastName`) and as the `APP` property. Use your repo name. Calls without it throw. |
+| `shop` | no | `xxx.myshopify.com`, from the server session. Shown in the visitor's notes (`notes`) and as `SHOP`. |
 | `email` | no | The merchant's email, from the server session. |
-| `merchantName` | no | Shown as `MERCHANT` and as the visitor's first name. |
+| `merchantName` | no | Shown as `MERCHANT` and as the visitor's first name (`firstName`). |
 
 What Brevo receives: one flat object. Brevo's `updateIntegrationData` takes only string, number, boolean
-or `null` values and reads custom properties as top-level keys beside the standard `email` and
-`firstName`, so the visitor is `{ email, firstName, SHOP, MERCHANT, APP, IDENTITY }` with nothing nested
-and any field you did not pass left out (never sent as `null`, which would erase a value Brevo holds). See
+or `null` values and reads custom properties as top-level keys beside the standard fields, so the visitor
+is `{ email, firstName, lastName, notes, SHOP, MERCHANT, APP, IDENTITY }` with nothing nested and any field
+you did not pass left out (never sent as `null`, which would erase a value Brevo holds). See
 [Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference).
 
+- **Standard fields, shown in every Brevo account.** `lastName` is your `app`, so the inbox list reads
+  `<merchantName> <app>`. `notes` is `<shop> · UNVERIFIED — set by the browser, not by us. Confirm before
+  acting on it.`, or only the warning when you passed no `shop`. This is where support reads the store
+  address and the do-not-trust warning.
+- **Custom keys** (`SHOP`, `MERCHANT`, `APP`, `IDENTITY`). They show in Brevo only if the account has
+  contact attributes with those names. Brevo's wording: "If custom properties set in
+  `updateIntegrationData` match existing contact attributes, they sync with your Contacts database.
+  Otherwise, they're available in Conversations only." In a live run on an account with no such
+  attributes they showed nowhere in the visitor panel or on the contact page. Creating the attributes
+  has not been tested here; rely on `lastName` and `notes`.
+
 Why `app` matters: when one Brevo inbox serves several apps, `APP` is how you tell which app a merchant
-wrote from. Short slugs collide; the repo name does not.
+wrote from. It is the visitor's last name in the inbox. Short slugs collide; the repo name does not.
 
 ## API
 
 Exports of `@01ecommerce/shopify-support-chat`:
 
 - `loadSupportChat(opts, win?)`, `supportChatTag(opts)`, `supportChatScript(opts)`: the three ways to mount it (above).
-- `buildVisitor(opts)`: the flat visitor object passed to Brevo's `updateIntegrationData` (`email`, `firstName`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`; no nested object). Throws without `app`.
+- `buildVisitor(opts)`: the flat visitor object passed to Brevo's `updateIntegrationData` (`email`, `firstName`, `lastName`, `notes`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`; no nested object). Throws without `app`.
 - `escapeForInlineScript(json)`: makes JSON safe inside an inline script.
 - `BREVO_WIDGET_SRC` (the widget script URL), `LOADER_ELEMENT_ID` (`brevo-conversations-loader`) and
   `IDENTITY_IS_UNVERIFIED` (the `IDENTITY` label).
@@ -146,7 +157,8 @@ with `shop` alone rather than breaking the page.
 ## Identity is unverified
 
 Everything the widget sends is set in the browser, so a visitor can fake it. Brevo has no identity
-verification, so the support panel shows `IDENTITY: UNVERIFIED` on every conversation. Support staff
+verification, so the visitor's Notes field carries the warning `UNVERIFIED` on every conversation (the
+custom `IDENTITY` key shows only if your account has a contact attribute of that name). Support staff
 must confirm who they are talking to, out of band, before acting on a billing or data request.
 
 Never pass internal merchant or tenant ids. They would be a browser-set claim too, and they would leak.

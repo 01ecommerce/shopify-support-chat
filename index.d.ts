@@ -16,6 +16,10 @@ export type ChatVisitor = {
 export type BrevoVisitor = {
   email?: string;
   firstName?: string;
+  /** Always the `app`, in Brevo's standard Last name field. */
+  lastName: string;
+  /** `<shop> · <IDENTITY_IS_UNVERIFIED>`, or only the warning without a shop. Brevo's standard Notes field. */
+  notes: string;
   SHOP?: string;
   MERCHANT?: string;
   APP: string;

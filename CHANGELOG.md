@@ -5,7 +5,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-24
+
 ### Added
+- `buildVisitor` sets the standard Brevo fields `lastName` (the `app`) and `notes` (`<shop> · UNVERIFIED…`,
+  or only the warning without a `shop`). In a live run the custom keys `SHOP`, `MERCHANT`, `APP` and
+  `IDENTITY` showed nowhere in the Brevo inbox, because Brevo shows custom properties only when the
+  account has contact attributes with those names ("Otherwise, they're available in Conversations
+  only", [Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)).
+  The standard Last name and Notes fields show in any account, so support now sees the app and the store
+  address with the do-not-trust warning. The inbox list reads `<merchantName> <app>`. The custom keys are
+  unchanged. The `BrevoVisitor` type gains `lastName` and `notes`. Creating contact attributes with the
+  custom names has not been tested.
 - The wiki is generated from README.md, docs/ and CHANGELOG.md on every push to main
   (`scripts/build-wiki.js` and `.github/workflows/wiki.yml`). Not part of the npm tarball, so no release.
 

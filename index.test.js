@@ -53,6 +53,8 @@ test("inline script: the updateIntegrationData payload is the flat visitor, no n
   assert.equal(payload.APP, "example-app");
   assert.equal(payload.SHOP, "demo.myshopify.com");
   assert.equal(payload.firstName, "Demo Co");
+  assert.equal(payload.lastName, "example-app");
+  assert.equal(payload.notes, `demo.myshopify.com · ${IDENTITY_IS_UNVERIFIED}`);
 });
 
 test("app is required", () => {
@@ -72,6 +74,8 @@ test("buildVisitor is ONE flat object: standard keys and SHOP, MERCHANT, APP, ID
   assert.deepEqual(v, {
     email: "a@b.co",
     firstName: "Demo Co",
+    lastName: "example-app",
+    notes: `demo.myshopify.com · ${IDENTITY_IS_UNVERIFIED}`,
     SHOP: "demo.myshopify.com",
     MERCHANT: "Demo Co",
     APP: "example-app",
@@ -81,7 +85,20 @@ test("buildVisitor is ONE flat object: standard keys and SHOP, MERCHANT, APP, ID
 
 test("buildVisitor omits undefined fields (never null: null would erase what Brevo holds)", () => {
   const v = buildVisitor({ app: "example-app" });
-  assert.deepEqual(Object.keys(v).sort(), ["APP", "IDENTITY"]);
+  assert.deepEqual(Object.keys(v).sort(), ["APP", "IDENTITY", "lastName", "notes"]);
+});
+
+test("buildVisitor: lastName is the app (a standard Brevo field, so support sees it in any account)", () => {
+  assert.equal(buildVisitor({ app: "example-app", shop: "demo.myshopify.com" }).lastName, "example-app");
+  assert.equal(buildVisitor({ app: "example-app" }).lastName, "example-app");
+});
+
+test("buildVisitor: notes is the shop and the UNVERIFIED warning, or only the warning without a shop", () => {
+  assert.equal(
+    buildVisitor({ app: "example-app", shop: "demo.myshopify.com" }).notes,
+    `demo.myshopify.com · ${IDENTITY_IS_UNVERIFIED}`,
+  );
+  assert.equal(buildVisitor({ app: "example-app" }).notes, IDENTITY_IS_UNVERIFIED);
 });
 
 // Brevo documents updateIntegrationData(data): "Each property's value must be a String, Number,
@@ -91,6 +108,7 @@ test("buildVisitor: every value is a string, number, boolean or null (Brevo acce
   const full = buildVisitor({ app: "example-app", shop: "demo.myshopify.com", email: "a@b.co", merchantName: "Demo Co" });
   const minimal = buildVisitor({ app: "example-app" });
   for (const v of [full, minimal]) {
+    assert.ok("lastName" in v && "notes" in v);
     for (const [k, x] of Object.entries(v)) assert.ok(scalar(x), `${k} is ${Array.isArray(x) ? "an array" : typeof x}`);
     assert.equal(v.attributes, undefined);
   }
@@ -163,6 +181,8 @@ test("loadSupportChat: the visitor carries APP, SHOP, MERCHANT, IDENTITY and no 
   assert.deepEqual(visitor, {
     email: "owner@demo.example",
     firstName: "Demo Co",
+    lastName: "example-app",
+    notes: `demo.myshopify.com · ${IDENTITY_IS_UNVERIFIED}`,
     SHOP: "demo.myshopify.com",
     MERCHANT: "Demo Co",
     APP: "example-app",

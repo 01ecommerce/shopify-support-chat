@@ -31,7 +31,12 @@ function omitUndefined(obj) {
 
 /** The object Brevo's `updateIntegrationData` takes: ONE flat object. Brevo accepts only String,
  *  Number, Boolean or null values, and custom properties are top-level keys beside the standard
- *  ones (email, firstName), so nothing is nested. Undefined fields are omitted, never sent as null
+ *  ones (email, firstName, lastName, notes), so nothing is nested.
+ *
+ *  The app and the store go into the standard `lastName` and `notes` fields, because those show in
+ *  the Brevo inbox in every account. The custom keys (SHOP, MERCHANT, APP, IDENTITY) show there only
+ *  if the account has contact attributes with those names: Brevo says custom properties that match
+ *  existing contact attributes sync to Contacts, "Otherwise, they're available in Conversations only". Undefined fields are omitted, never sent as null
  *  (null removes a property Brevo already holds).
  *  https://developers.brevo.com/docs/javascript-api-reference */
 export function buildVisitor({ app, shop, email, merchantName }) {
@@ -39,6 +44,8 @@ export function buildVisitor({ app, shop, email, merchantName }) {
   return omitUndefined({
     email,
     firstName: merchantName,
+    lastName: app,
+    notes: [shop, IDENTITY_IS_UNVERIFIED].filter(Boolean).join(" · "),
     SHOP: shop,
     MERCHANT: merchantName,
     APP: app,
