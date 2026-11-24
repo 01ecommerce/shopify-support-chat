@@ -23,7 +23,7 @@ Check all four. If one is false, stop and ask the developer; do not guess.
 ## Step 1: install the release tag
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.2
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.0.3
 ```
 
 Use a **tag** tarball, never a branch and never a `github:` dependency. A tag does not move, and the
@@ -46,7 +46,7 @@ Add one variable, `BREVO_CONVERSATIONS_ID`, holding the widget id.
 ## Step 3: the `app` value
 
 Every call needs `app`: **one stable, unique id for this app, the repository name** (for example
-`example-app`). It appears to support as the `APP` attribute, which is how the developer tells apps
+`example-app`). It appears to support as the `APP` property, which is how the developer tells apps
 apart when one Brevo inbox serves several. Do not use a display name that can change, and do not use a
 short generic slug. A call without `app` throws.
 
@@ -186,7 +186,7 @@ CSP, do nothing.
 ## Step 7: privacy policy
 
 List **Brevo** as a subprocessor in the app's privacy policy. The widget sends the merchant's chat
-messages and the attributes above to Brevo.
+messages and the visitor properties above to Brevo.
 
 ## DO NOT
 
@@ -206,9 +206,9 @@ check each item. Report the result of every one, including a FAIL with what you 
 |---|---|---|---|
 | 1 | In the browser devtools, **scoped to the app iframe** (the embedded app runs inside an iframe), evaluate `window.BrevoConversationsID`. | Your widget id, exactly. | `undefined` or `""` (the variable is unset, empty, or the layout does not mount `SupportChat`); or you evaluated it in the top Shopify admin frame, not the app iframe. |
 | 2 | In the same frame, run `document.querySelectorAll('#brevo-conversations-loader').length`. | `1`, and it is still `1` after navigating to another admin page. | `0` (not mounted, or a CSP blocks the script) or `2` or more (mounted twice, or a second Brevo snippet exists). |
-| 3 | Open the bubble and send a test message. Open **your own** Brevo inbox. | The message arrives with the attributes `APP` (your `app` value), `SHOP` (`demo.myshopify.com` style) and `IDENTITY: UNVERIFIED`. | No message (wrong widget id, or a CSP or ad blocker blocks `conversations-widget.brevo.com`); or `APP` or `SHOP` is missing (the option was not passed). |
+| 3 | Open the bubble and send a test message. Open **your own** Brevo inbox. | The message arrives from a visitor with the email and first name you passed, and with the properties `APP` (your `app` value), `SHOP` (`demo.myshopify.com` style) and `IDENTITY: UNVERIFIED`. | No message (wrong widget id, or a CSP or ad blocker blocks `conversations-widget.brevo.com`); or `APP` or `SHOP` is missing (the option was not passed), or the visitor has no email or name when you passed them (the package is older than v2.0.3, which nested the fields where Brevo ignores them). |
 | 4 | Open a storefront page of the shop and view the page source. | It contains no `brevo`. | Any `brevo` text: the widget is on the storefront. Remove it; this fails app review. |
-| 5 | In Safari, open the app, send a message, then reload. | The attributes (`SHOP`, `APP`) are still present on the conversation after the reload. | The conversation looks anonymous after the reload (Safari dropped the widget's cookie inside the iframe). Confirm the loader runs on every page load. |
+| 5 | In Safari, open the app, send a message, then reload. | The properties (`SHOP`, `APP`) are still present on the conversation after the reload. | The conversation looks anonymous after the reload (Safari dropped the widget's cookie inside the iframe). Confirm the loader runs on every page load. |
 
 ## The support-staff rule
 
@@ -223,10 +223,10 @@ All exports of `@01ecommerce/shopify-support-chat`:
 - `loadSupportChat(opts, win?)`: browser loader; returns `false` on the server or with an empty `widgetId`.
 - `supportChatTag(opts)`: a `<script>` tag string, or `""` without a `widgetId`.
 - `supportChatScript(opts)`: the inline script body without the tag.
-- `buildVisitor(opts)`: the visitor object passed to Brevo's `updateIntegrationData`; throws without `app`.
+- `buildVisitor(opts)`: the flat visitor object passed to Brevo's `updateIntegrationData` (`email`, `firstName`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`). Brevo takes only string, number, boolean or `null` values, with custom properties as top-level keys, so nothing is nested ([Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)); throws without `app`.
 - `escapeForInlineScript(json)`: makes JSON safe inside an inline script.
 - `BREVO_WIDGET_SRC`: the widget script URL. `LOADER_ELEMENT_ID`: the script element id, `brevo-conversations-loader`.
-- `IDENTITY_IS_UNVERIFIED`: the label sent as the `IDENTITY` attribute.
+- `IDENTITY_IS_UNVERIFIED`: the label sent as the `IDENTITY` property.
 
 Exports of `@01ecommerce/shopify-support-chat/react`: `SupportChat`, a component that renders nothing.
 

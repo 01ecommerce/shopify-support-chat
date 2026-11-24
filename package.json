@@ -1,6 +1,6 @@
 {
   "name": "@01ecommerce/shopify-support-chat",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Brevo Conversations chat bubble for Shopify app admin pages: merchants message the app developer from inside the embedded app.",
   "private": true,
   "license": "MIT",

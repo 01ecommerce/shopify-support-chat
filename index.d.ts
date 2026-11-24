@@ -1,7 +1,7 @@
 export type ChatVisitor = {
   /** Brevo Conversations widget id. Empty = no bubble. */
   widgetId: string;
-  /** A stable, unique id for your app (suggest the repo name). Shown to support as the APP attribute. */
+  /** A stable, unique id for your app (suggest the repo name). Shown to support as the APP property. */
   app: string;
   /** xxx.myshopify.com, from the server session (never from the query string). */
   shop?: string;
@@ -10,16 +10,16 @@ export type ChatVisitor = {
   merchantName?: string;
 };
 
-/** What Brevo's `updateIntegrationData` receives. */
+/** What Brevo's `updateIntegrationData` receives: one flat object of string values (Brevo accepts only
+ *  String, Number, Boolean or null, and takes custom properties as top-level keys). Nothing is nested.
+ *  https://developers.brevo.com/docs/javascript-api-reference */
 export type BrevoVisitor = {
   email?: string;
   firstName?: string;
-  attributes: {
-    SHOP?: string;
-    MERCHANT?: string;
-    APP: string;
-    IDENTITY: string;
-  };
+  SHOP?: string;
+  MERCHANT?: string;
+  APP: string;
+  IDENTITY: string;
 };
 
 /** The minimal slice of `window` the loader uses. */

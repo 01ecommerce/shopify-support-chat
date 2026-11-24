@@ -29,13 +29,20 @@ function omitUndefined(obj) {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }
 
-/** The visitor object Brevo's `updateIntegrationData` takes. Undefined fields are omitted. */
+/** The object Brevo's `updateIntegrationData` takes: ONE flat object. Brevo accepts only String,
+ *  Number, Boolean or null values, and custom properties are top-level keys beside the standard
+ *  ones (email, firstName), so nothing is nested. Undefined fields are omitted, never sent as null
+ *  (null removes a property Brevo already holds).
+ *  https://developers.brevo.com/docs/javascript-api-reference */
 export function buildVisitor({ app, shop, email, merchantName }) {
   if (!app) throw new Error("buildVisitor: `app` is required (a stable unique id for your app)");
   return omitUndefined({
     email,
     firstName: merchantName,
-    attributes: omitUndefined({ SHOP: shop, MERCHANT: merchantName, APP: app, IDENTITY: IDENTITY_IS_UNVERIFIED }),
+    SHOP: shop,
+    MERCHANT: merchantName,
+    APP: app,
+    IDENTITY: IDENTITY_IS_UNVERIFIED,
   });
 }
 

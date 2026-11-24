@@ -1,6 +1,6 @@
 # shopify-support-chat
 
-> A Brevo Conversations chat bubble for the admin side of a Shopify app: merchants message the app developer from inside the embedded app, and each conversation is tagged with the shop, the merchant and the app. Zero runtime dependencies, ESM, MIT. Install a release tag tarball, never a branch. Admin pages only, never a storefront. Visitor identity is unverified by design.
+> A Brevo Conversations chat bubble for the admin side of a Shopify app: merchants message the app developer from inside the embedded app, and each conversation is tagged with the shop, the merchant and the app. Zero runtime dependencies, ESM, MIT. Install a release tag tarball, never a branch. Admin pages only, never a storefront. Visitor identity is unverified by design. The visitor is one flat object of scalar properties (email, firstName, SHOP, MERCHANT, APP, IDENTITY), as Brevo's updateIntegrationData requires.
 
 ## Docs
 

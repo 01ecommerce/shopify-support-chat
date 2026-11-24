@@ -9,6 +9,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 - The wiki is generated from README.md, docs/ and CHANGELOG.md on every push to main
   (`scripts/build-wiki.js` and `.github/workflows/wiki.yml`). Not part of the npm tarball, so no release.
 
+## [2.0.3] - 2026-11-24
+
+### Fixed
+- The visitor's email and name, and the `SHOP`, `MERCHANT`, `APP` and `IDENTITY` fields, never reached
+  the Brevo inbox: the custom fields were nested under `attributes`, which Brevo's
+  `updateIntegrationData` does not accept (it takes only string, number, boolean or `null` values, with
+  custom properties as top-level keys; see
+  [Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)). They are
+  now flat scalar properties, as Brevo documents. Fields you do not pass are still omitted, never sent as `null`.
+- `buildVisitor` returns that flat object (`email`, `firstName`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`)
+  and the `BrevoVisitor` type drops `attributes`. The old shape never reached Brevo, so this is a fix, not a breaking change.
+
 ## [2.0.2] - 2026-11-23
 
 ### Added
@@ -64,6 +76,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 - First release: `supportChatScript`, `supportChatTag`, `escapeForInlineScript`, `IDENTITY_IS_UNVERIFIED`
   and a React `SupportChat` component that rendered an inline script.
 
+[2.0.3]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.3
 [2.0.2]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.2
 [2.0.1]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.1
 [2.0.0]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.0

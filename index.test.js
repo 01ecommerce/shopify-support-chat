@@ -43,6 +43,18 @@ test("boots the widget and identifies the merchant and app", () => {
   assert.ok(!js.includes("MERCHANT_ID"));
 });
 
+test("inline script: the updateIntegrationData payload is the flat visitor, no nested object", () => {
+  const js = supportChatScript({ ...base, email: "owner@demo.example" });
+  const m = js.match(/w\[c\]\('updateIntegrationData',(\{.*\})\);/);
+  assert.ok(m, "updateIntegrationData call not found");
+  const payload = JSON.parse(m[1]);
+  assert.deepEqual(payload, buildVisitor({ ...base, email: "owner@demo.example" }));
+  assert.equal(payload.attributes, undefined);
+  assert.equal(payload.APP, "example-app");
+  assert.equal(payload.SHOP, "demo.myshopify.com");
+  assert.equal(payload.firstName, "Demo Co");
+});
+
 test("app is required", () => {
   assert.throws(() => supportChatScript({ ...base, app: "" }));
 });
@@ -55,24 +67,33 @@ test("a shop name cannot break out of the script tag", () => {
 
 // --- buildVisitor ------------------------------------------------------------
 
-test("buildVisitor carries APP, SHOP, MERCHANT and the IDENTITY label", () => {
+test("buildVisitor is ONE flat object: standard keys and SHOP, MERCHANT, APP, IDENTITY beside them", () => {
   const v = buildVisitor({ app: "example-app", shop: "demo.myshopify.com", email: "a@b.co", merchantName: "Demo Co" });
   assert.deepEqual(v, {
     email: "a@b.co",
     firstName: "Demo Co",
-    attributes: {
-      SHOP: "demo.myshopify.com",
-      MERCHANT: "Demo Co",
-      APP: "example-app",
-      IDENTITY: IDENTITY_IS_UNVERIFIED,
-    },
+    SHOP: "demo.myshopify.com",
+    MERCHANT: "Demo Co",
+    APP: "example-app",
+    IDENTITY: IDENTITY_IS_UNVERIFIED,
   });
 });
 
-test("buildVisitor omits undefined fields", () => {
+test("buildVisitor omits undefined fields (never null: null would erase what Brevo holds)", () => {
   const v = buildVisitor({ app: "example-app" });
-  assert.deepEqual(Object.keys(v), ["attributes"]);
-  assert.deepEqual(Object.keys(v.attributes).sort(), ["APP", "IDENTITY"]);
+  assert.deepEqual(Object.keys(v).sort(), ["APP", "IDENTITY"]);
+});
+
+// Brevo documents updateIntegrationData(data): "Each property's value must be a String, Number,
+// Boolean, or null." https://developers.brevo.com/docs/javascript-api-reference
+test("buildVisitor: every value is a string, number, boolean or null (Brevo accepts nothing nested)", () => {
+  const scalar = (x) => x === null || ["string", "number", "boolean"].includes(typeof x);
+  const full = buildVisitor({ app: "example-app", shop: "demo.myshopify.com", email: "a@b.co", merchantName: "Demo Co" });
+  const minimal = buildVisitor({ app: "example-app" });
+  for (const v of [full, minimal]) {
+    for (const [k, x] of Object.entries(v)) assert.ok(scalar(x), `${k} is ${Array.isArray(x) ? "an array" : typeof x}`);
+    assert.equal(v.attributes, undefined);
+  }
 });
 
 test("buildVisitor requires app", () => {
@@ -139,11 +160,15 @@ test("loadSupportChat: the visitor carries APP, SHOP, MERCHANT, IDENTITY and no 
   const { win } = fakeWindow();
   loadSupportChat({ ...base, email: "owner@demo.example", tenantId: "t-123", merchantId: "m-456" }, win);
   const visitor = identifyCalls(win)[0][1];
-  assert.equal(visitor.attributes.APP, "example-app");
-  assert.equal(visitor.attributes.SHOP, "demo.myshopify.com");
-  assert.equal(visitor.attributes.MERCHANT, "Demo Co");
-  assert.equal(visitor.attributes.IDENTITY, IDENTITY_IS_UNVERIFIED);
-  assert.equal(visitor.email, "owner@demo.example");
+  assert.deepEqual(visitor, {
+    email: "owner@demo.example",
+    firstName: "Demo Co",
+    SHOP: "demo.myshopify.com",
+    MERCHANT: "Demo Co",
+    APP: "example-app",
+    IDENTITY: IDENTITY_IS_UNVERIFIED,
+  });
+  assert.equal(visitor.attributes, undefined);
   const flat = JSON.stringify(visitor);
   assert.ok(!flat.includes("t-123") && !flat.includes("m-456"));
 });
