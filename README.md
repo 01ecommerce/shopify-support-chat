@@ -114,16 +114,16 @@ is `{ email, firstName, lastName, notes, SHOP, MERCHANT, APP, IDENTITY }` with n
 you did not pass left out (never sent as `null`, which would erase a value Brevo holds). See
 [Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference).
 
-- **Standard fields, shown in every Brevo account.** `lastName` is your `app`, so the inbox list reads
+- **Standard fields, shown in the conversation's visitor panel.** `lastName` is your `app`, so the inbox list reads
   `<merchantName> <app>`. `notes` is `<shop> · UNVERIFIED — set by the browser, not by us. Confirm before
   acting on it.`, or only the warning when you passed no `shop`. This is where support reads the store
   address and the do-not-trust warning.
-- **Custom keys** (`SHOP`, `MERCHANT`, `APP`, `IDENTITY`). They show in Brevo only if the account has
-  contact attributes with those names. Brevo's wording: "If custom properties set in
+- **Custom keys** (`SHOP`, `MERCHANT`, `APP`, `IDENTITY`). In a live run they did not show in Brevo.
+  Brevo's wording: "If custom properties set in
   `updateIntegrationData` match existing contact attributes, they sync with your Contacts database.
-  Otherwise, they're available in Conversations only." In a live run on an account with no such
-  attributes they showed nowhere in the visitor panel or on the contact page. Creating the attributes
-  has not been tested here; rely on `lastName` and `notes`.
+  Otherwise, they're available in Conversations only." That run's account had no such
+  attributes, and the keys showed nowhere in the visitor panel or on the contact page. Why is not
+  established, and creating the attributes has not been tested here; rely on `lastName` and `notes`.
 
 Why `app` matters: when one Brevo inbox serves several apps, `APP` is how you tell which app a merchant
 wrote from. It is the visitor's last name in the inbox. Short slugs collide; the repo name does not.

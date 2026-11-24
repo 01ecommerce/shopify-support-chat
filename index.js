@@ -34,8 +34,8 @@ function omitUndefined(obj) {
  *  ones (email, firstName, lastName, notes), so nothing is nested.
  *
  *  The app and the store go into the standard `lastName` and `notes` fields, because those show in
- *  the Brevo inbox in every account. The custom keys (SHOP, MERCHANT, APP, IDENTITY) show there only
- *  if the account has contact attributes with those names: Brevo says custom properties that match
+ *  the conversation's visitor panel. The custom keys (SHOP, MERCHANT, APP, IDENTITY) did not show in a
+ *  live run on an account without matching contact attributes (why is not established). Brevo says custom properties that match
  *  existing contact attributes sync to Contacts, "Otherwise, they're available in Conversations only". Undefined fields are omitted, never sent as null
  *  (null removes a property Brevo already holds).
  *  https://developers.brevo.com/docs/javascript-api-reference */
