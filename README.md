@@ -24,7 +24,7 @@ or Cursor, in your Shopify app's repository:
 ```text
 Add the Brevo support chat bubble to this Shopify app's admin using the npm package
 @01ecommerce/shopify-support-chat. Install it from the tag tarball:
-https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.1.0
+https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.0
 Then follow node_modules/@01ecommerce/shopify-support-chat/docs/agent-setup.md exactly, step by step.
 If that file is not there, read it at
 https://github.com/01ecommerce/shopify-support-chat/blob/main/docs/agent-setup.md
@@ -42,7 +42,7 @@ Full guide: [docs/agent-setup.md](https://github.com/01ecommerce/shopify-support
 Install a release tag, not a branch:
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.1.0
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.0
 ```
 
 Why a tag tarball: a tag does not move, and your lockfile stores an integrity hash of the tarball, so
@@ -68,6 +68,7 @@ import { SupportChat } from "@01ecommerce/shopify-support-chat/react";
   shop={chat.shop}
   email={chat.email}
   merchantName={chat.merchantName}
+  visitorId={chat.visitorId} // from supportChatVisitorId, on the server
 />
 ```
 
@@ -81,7 +82,7 @@ executes when it inserts it on the client.)
 ```js
 import { supportChatTag } from "@01ecommerce/shopify-support-chat";
 
-html += supportChatTag({ widgetId: process.env.BREVO_CONVERSATIONS_ID, app: "my-shopify-app", shop, email, merchantName });
+html += supportChatTag({ widgetId: process.env.BREVO_CONVERSATIONS_ID, app: "my-shopify-app", shop, email, merchantName, visitorId });
 ```
 
 `supportChatScript(opts)` returns the script body without the `<script>` tag. Both return `""` when
@@ -92,11 +93,50 @@ html += supportChatTag({ widgetId: process.env.BREVO_CONVERSATIONS_ID, app: "my-
 ```js
 import { loadSupportChat } from "@01ecommerce/shopify-support-chat";
 
-loadSupportChat({ widgetId, app: "my-shopify-app", shop, email, merchantName });
+loadSupportChat({ widgetId, app: "my-shopify-app", shop, email, merchantName, visitorId });
 ```
 
 Safe to call on every page load. It adds the Brevo script once and identifies the merchant on every
 call. It returns `false` on the server or with an empty `widgetId`.
+
+### One conversation per app and store: `visitorId`
+
+Brevo keeps its anonymous visitor in the browser's storage for the top site, which inside the Shopify
+admin is `admin.shopify.com`. Without a `visitorId`, every app that uses the same Brevo widget id and every
+store open in one browser is **one** Brevo visitor with **one** conversation, relabelled by whichever page
+loaded last. Pass a `visitorId` per app + store to give each its own conversation.
+
+Derive it on the server with `supportChatVisitorId` and pass it to the page:
+
+```js
+import { supportChatVisitorId } from "@01ecommerce/shopify-support-chat/server";
+
+const visitorId = supportChatVisitorId({
+  secret: process.env.SHOPIFY_API_SECRET, // a server-only secret, at least 16 characters
+  app: "my-shopify-app",                  // the same `app` you pass to the chat
+  shop,                                   // xxx.myshopify.com, from the server session
+});
+```
+
+- **Server only.** `@01ecommerce/shopify-support-chat/server` imports `node:crypto`; the browser entry does
+  not import it. Never compute the id in the browser and never send the secret to the page. Brevo: the
+  `visitorId` "must be unique and secret (not available to other users), since knowing it could grant
+  access to the conversation", so never use the shop domain or another public value as the id.
+- **Switching to it** starts a new Brevo conversation per app + store. An existing anonymous conversation
+  is not carried over (Brevo documents no merge). Rotating the secret starts new conversations too.
+- **When it is set:** the loader merges `visitorId` into `window.BrevoConversationsSetup` before it adds
+  the Brevo script, which reads its settings when it starts. The first call in a page sets the id; later
+  calls leave it alone, and the package never calls Brevo's `restart`.
+- **Validation:** 16 to 128 of `A-Z a-z 0-9 _ -`, or the call throws, so a malformed id never falls back
+  to the shared anonymous visitor. Empty or absent keeps Brevo's anonymous visitor (the behaviour before 2.2.0).
+- **Derivation**, for porting: HMAC-SHA256 keyed by `secret` over
+  `"shopify-support-chat:visitor:v1\n" + <len(app)> + ":" + app + "\n" + <len(shop)> + ":" + shop` (each
+  `<len>` the field's UTF-8 byte length, in decimal), hex, first 32 characters. The length prefixes mean no
+  `app` or `shop` value can forge the field boundary. Test vector: secret `0123456789abcdef0123456789abcdef`,
+  app `example-app`, shop `demo.myshopify.com` gives `bc4dd335276f23de8c7edcd3701aed32`.
+- Brevo documents `visitorId` in its
+  [JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference). That separate
+  conversations result for each app + store has not been checked in a live run at this release.
 
 ## Options
 
@@ -107,6 +147,7 @@ call. It returns `false` on the server or with an empty `widgetId`.
 | `shop` | no | `xxx.myshopify.com`, from the server session. Shown in the visitor's notes (`notes`) and as `SHOP`. |
 | `email` | no | The merchant's email, from the server session. |
 | `merchantName` | no | Shown as `MERCHANT` and as the visitor's first name (`firstName`). |
+| `visitorId` | no (strongly recommended) | Brevo's visitor id: one conversation per app + store. From `supportChatVisitorId`, on the server. 16 to 128 of `A-Z a-z 0-9 _ -`, or the call throws. Never sent as a visitor property. See [above](#one-conversation-per-app-and-store-visitorid). |
 
 What Brevo receives: one flat object. Brevo's `updateIntegrationData` takes only string, number, boolean
 or `null` values and reads custom properties as top-level keys beside the standard fields, so the visitor
@@ -139,6 +180,10 @@ Exports of `@01ecommerce/shopify-support-chat`:
   `IDENTITY_IS_UNVERIFIED` (the `IDENTITY` label).
 
 Exports of `@01ecommerce/shopify-support-chat/react`: `SupportChat`.
+
+Exports of `@01ecommerce/shopify-support-chat/server` (server only; it imports `node:crypto`):
+`supportChatVisitorId({ secret, app, shop })`, the `visitorId` for one app + store (32 lowercase hex
+characters). Throws on a missing input or a secret shorter than 16 characters.
 
 ## Where `shop` and `email` come from
 

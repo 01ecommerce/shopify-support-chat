@@ -1,6 +1,6 @@
 {
   "name": "@01ecommerce/shopify-support-chat",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Brevo Conversations chat bubble for Shopify app admin pages: merchants message the app developer from inside the embedded app.",
   "private": true,
   "license": "MIT",
@@ -17,9 +17,10 @@
   "engines": { "node": ">=20" },
   "exports": {
     ".": { "types": "./index.d.ts", "default": "./index.js" },
-    "./react": { "types": "./react.d.ts", "default": "./react.js" }
+    "./react": { "types": "./react.d.ts", "default": "./react.js" },
+    "./server": { "types": "./server.d.ts", "default": "./server.js" }
   },
-  "files": ["index.js", "index.d.ts", "react.js", "react.d.ts", "CHANGELOG.md", "docs/agent-setup.md", "llms.txt"],
+  "files": ["index.js", "index.d.ts", "react.js", "react.d.ts", "server.js", "server.d.ts", "CHANGELOG.md", "docs/agent-setup.md", "llms.txt"],
   "peerDependencies": { "react": ">=17" },
   "peerDependenciesMeta": { "react": { "optional": true } },
   "scripts": { "test": "node --test" }

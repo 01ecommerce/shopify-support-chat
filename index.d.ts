@@ -8,6 +8,13 @@ export type ChatVisitor = {
   /** The store's email, from the server session. */
   email?: string;
   merchantName?: string;
+  /** Brevo's `visitorId`: one conversation per app + store instead of the one anonymous visitor every
+   *  app in the Shopify admin shares in a browser. Derive it on the SERVER with `supportChatVisitorId`
+   *  from `@01ecommerce/shopify-support-chat/server`; never compute it in the browser. 16 to 128 of
+   *  A-Z a-z 0-9 _ -, or the call throws. Empty or absent = Brevo's own anonymous visitor (as before).
+   *  Set before the widget starts; a later call cannot change it (nothing calls Brevo's `restart`).
+   *  Never sent in `updateIntegrationData`. */
+  visitorId?: string;
 };
 
 /** What Brevo's `updateIntegrationData` receives: one flat object of string values (Brevo accepts only
@@ -41,7 +48,9 @@ export const LOADER_ELEMENT_ID: string;
 export const IDENTITY_IS_UNVERIFIED: string;
 export function escapeForInlineScript(json: string): string;
 export function buildVisitor(opts: Omit<ChatVisitor, "widgetId"> & { widgetId?: string }): BrevoVisitor;
-/** Browser loader. Returns false on the server or with an empty widgetId. Throws without `app`. */
+/** Browser loader. Returns false on the server or with an empty widgetId. Throws without `app` or with a
+ *  malformed `visitorId`. The first call in a page sets `visitorId`; later calls leave it alone. */
 export function loadSupportChat(opts: ChatVisitor, win?: ChatWindow | undefined): boolean;
+/** Throws without `app` or with a malformed `visitorId`. */
 export function supportChatScript(opts: ChatVisitor): string;
 export function supportChatTag(opts: ChatVisitor): string;

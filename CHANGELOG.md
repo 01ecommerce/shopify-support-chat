@@ -5,6 +5,34 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-25
+
+### Added
+- A `visitorId` option (`ChatVisitor`, `loadSupportChat`, `supportChatScript`, `supportChatTag` and the
+  React `SupportChat`). Brevo keeps its anonymous visitor in storage for the top site, which in the Shopify
+  admin is `admin.shopify.com`, so without it every app using one widget id and every store in one browser
+  shared ONE Brevo visitor and ONE conversation, relabelled by the last page loaded. With a `visitorId` per
+  app + store, the loader merges it into `window.BrevoConversationsSetup` (never replacing that object)
+  before it adds the Brevo script, as Brevo requires
+  ([JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)). The first call
+  in a page sets it; later calls leave it alone, and nothing calls Brevo's `restart`. It must be 16 to 128
+  of `A-Z a-z 0-9 _ -`, or the call throws, so a malformed id never falls back to the shared anonymous
+  visitor. It is never sent in `updateIntegrationData`. Absent or empty: exactly the 2.1.0 behaviour.
+- A server-only entry, `@01ecommerce/shopify-support-chat/server`, exporting
+  `supportChatVisitorId({ secret, app, shop })`: HMAC-SHA256 keyed by a server-only secret (such as the
+  app's API secret, at least 16 characters) over
+  `"shopify-support-chat:visitor:v1\n" + <len(app)> + ":" + app + "\n" + <len(shop)> + ":" + shop` (lengths in
+  UTF-8 bytes), the first 32 hex characters. Uses `node:crypto`, a Node builtin, so there are still no
+  runtime dependencies; the browser entry does not import it. The README and the agent setup guide quote
+  a test vector for porting.
+- `docs/agent-setup.md` gains Step 5 (derive the visitor id on the server) and Verify item 6; the later
+  steps are renumbered.
+
+### Note
+- A consumer that starts passing `visitorId` starts a new Brevo conversation per app + store: an existing
+  anonymous conversation is not carried over (Brevo documents no merge). Separate conversations per app +
+  store are what Brevo documents; they had not been checked in a live run at release.
+
 ## [2.1.0] - 2026-11-24
 
 ### Added
@@ -87,6 +115,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - First release: `supportChatScript`, `supportChatTag`, `escapeForInlineScript`, `IDENTITY_IS_UNVERIFIED`
   and a React `SupportChat` component that rendered an inline script.
 
+[2.2.0]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.2.0
+[2.1.0]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.1.0
 [2.0.3]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.3
 [2.0.2]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.2
 [2.0.1]: https://github.com/01ecommerce/shopify-support-chat/releases/tag/v2.0.1

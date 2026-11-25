@@ -36,6 +36,8 @@ test("the tarball ships exactly the public files", () => {
     "package.json",
     "react.d.ts",
     "react.js",
+    "server.d.ts",
+    "server.js",
   ]);
 });
 
@@ -52,6 +54,10 @@ test("every exports target exists on disk", () => {
   const targets = [];
   const walk = (v) => (typeof v === "string" ? targets.push(v) : Object.values(v).forEach(walk));
   walk(pkg.exports);
-  assert.ok(targets.length >= 4);
+  assert.ok(targets.length >= 6);
   for (const t of targets) assert.ok(existsSync(new URL(t, import.meta.url)), t);
+});
+
+test("./server is an export of its own, so the browser entry never pulls in node:crypto", () => {
+  assert.deepEqual(pkg.exports["./server"], { types: "./server.d.ts", default: "./server.js" });
 });

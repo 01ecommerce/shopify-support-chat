@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import * as indexModule from "./index.js";
+import * as serverModule from "./server.js";
 
 const read = (f) => readFileSync(new URL(`./${f}`, import.meta.url), "utf8");
 const pkg = JSON.parse(read("package.json"));
@@ -29,14 +30,15 @@ test("every install URL in README, docs and llms.txt uses exactly the package.js
 
 test("the export scan sees what the modules really export (the scan itself is not blind)", () => {
   assert.deepEqual(exportNames(read("index.js")).sort(), Object.keys(indexModule).sort());
+  assert.deepEqual(exportNames(read("server.js")).sort(), Object.keys(serverModule).sort());
   assert.deepEqual(exportNames(read("react.js")), ["SupportChat"]);
 });
 
 for (const doc of ["README.md", "docs/agent-setup.md"]) {
-  test(`${doc} mentions every runtime export of index.js and react.js`, () => {
+  test(`${doc} mentions every runtime export of index.js, server.js and react.js`, () => {
     assert.ok(existsSync(new URL(`./${doc}`, import.meta.url)), `${doc} exists`);
     const text = read(doc);
-    for (const name of [...exportNames(read("index.js")), ...exportNames(read("react.js"))]) {
+    for (const name of ["index.js", "server.js", "react.js"].flatMap((f) => exportNames(read(f)))) {
       assert.ok(text.includes(name), `${doc} does not mention the export ${name}`);
     }
   });
@@ -82,3 +84,10 @@ test("llms.txt follows llmstxt.org: an H1, a summary, absolute links to the key 
     assert.ok(t.includes(`https://github.com/01ecommerce/shopify-support-chat/blob/main/${p}`), `llms.txt links ${p}`);
   }
 });
+
+for (const doc of ["README.md", "docs/agent-setup.md"]) {
+  test(`${doc} quotes the visitor id test vector that server.test.js pins`, () => {
+    const vector = read("server.test.js").match(/published test vector[\s\S]*?"([0-9a-f]{32})"/)[1];
+    assert.ok(read(doc).includes(vector), `${doc} does not quote ${vector}`);
+  });
+}

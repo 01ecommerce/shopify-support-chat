@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import {
   supportChatScript,
   supportChatTag,
@@ -17,12 +18,21 @@ const base = { widgetId: "abc123", app: "example-app", shop: "demo.myshopify.com
 /** A minimal stand-in for `window` + `document`: enough for the loader, no DOM library. */
 function fakeWindow() {
   const appended = [];
-  const document = {
-    head: { appendChild: (el) => appended.push(el) },
+  const win = {};
+  win.document = {
+    head: {
+      appendChild: (el) => {
+        // What the widget would read when its script starts: the setup as it stood at append time.
+        const setup = win.BrevoConversationsSetup;
+        el.setupWhenAppended = setup === undefined ? undefined : { ...setup };
+        el.setupObjectWhenAppended = setup;
+        appended.push(el);
+      },
+    },
     createElement: (tag) => ({ tag }),
     getElementById: (id) => appended.find((el) => el.id === id) ?? null,
   };
-  return { win: { document }, appended };
+  return { win, appended };
 }
 
 const identifyCalls = (win) =>
@@ -193,6 +203,121 @@ test("loadSupportChat: the visitor carries APP, SHOP, MERCHANT, IDENTITY and no 
   assert.ok(!flat.includes("t-123") && !flat.includes("m-456"));
 });
 
+// --- visitorId: a known Brevo visitor per app + store --------------------------
+
+const VID = "0123456789abcdef0123456789abcdef";
+
+test("loadSupportChat: sets BrevoConversationsSetup.visitorId BEFORE the loader script is appended", () => {
+  const { win, appended } = fakeWindow();
+  assert.equal(loadSupportChat({ ...base, visitorId: VID }, win), true);
+  assert.equal(appended.length, 1);
+  assert.deepEqual(appended[0].setupWhenAppended, { visitorId: VID });
+  assert.equal(win.BrevoConversationsSetup.visitorId, VID);
+});
+
+test("loadSupportChat: merges visitorId into an existing BrevoConversationsSetup (never replaces it)", () => {
+  const { win, appended } = fakeWindow();
+  const existing = { existingSetting: "kept" };
+  win.BrevoConversationsSetup = existing;
+  loadSupportChat({ ...base, visitorId: VID }, win);
+  assert.equal(win.BrevoConversationsSetup, existing, "the same object, not a replacement");
+  assert.deepEqual(existing, { existingSetting: "kept", visitorId: VID });
+  assert.equal(appended[0].setupObjectWhenAppended, existing);
+  assert.deepEqual(appended[0].setupWhenAppended, { existingSetting: "kept", visitorId: VID });
+});
+
+test("loadSupportChat: no visitorId (absent, empty or null) leaves BrevoConversationsSetup exactly as it was", () => {
+  for (const visitorId of [undefined, "", null]) {
+    const { win, appended } = fakeWindow();
+    assert.equal(loadSupportChat({ ...base, visitorId }, win), true);
+    assert.equal(win.BrevoConversationsSetup, undefined);
+    assert.equal(appended[0].setupWhenAppended, undefined);
+    const other = fakeWindow();
+    other.win.BrevoConversationsSetup = { existingSetting: "kept" };
+    loadSupportChat({ ...base, visitorId }, other.win);
+    assert.deepEqual(other.win.BrevoConversationsSetup, { existingSetting: "kept" });
+  }
+});
+
+test("loadSupportChat: the first call in a page sets the id; a later call cannot change it (no restart)", () => {
+  const { win, appended } = fakeWindow();
+  loadSupportChat({ ...base, visitorId: VID }, win);
+  loadSupportChat({ ...base, visitorId: "ffffffffffffffffffffffffffffffff" }, win);
+  assert.equal(appended.length, 1);
+  assert.equal(win.BrevoConversationsSetup.visitorId, VID);
+  assert.equal(identifyCalls(win).length, 2, "the merchant is still identified on every call");
+});
+
+const badIds = ["short", "0123456789abcde", "x".repeat(129), "0123456789abcdef 0123", "0123456789abcdef\"</script>", "0123456789abcdéf0", 12345678901234567890, {}];
+
+test("loadSupportChat: a malformed visitorId throws and loads nothing (never falls back to the shared visitor)", () => {
+  for (const visitorId of badIds) {
+    const { win, appended } = fakeWindow();
+    assert.throws(() => loadSupportChat({ ...base, visitorId }, win), /visitorId/, String(visitorId));
+    assert.equal(appended.length, 0);
+    assert.equal(win.BrevoConversationsID, undefined);
+    assert.equal(win.BrevoConversationsSetup, undefined);
+  }
+});
+
+test("visitorId: 16 to 128 of A-Z a-z 0-9 _ - are accepted", () => {
+  for (const visitorId of ["0123456789abcdef", "A".repeat(128), "abc_DEF-123_xyz-0"]) {
+    const { win } = fakeWindow();
+    assert.equal(loadSupportChat({ ...base, visitorId }, win), true, visitorId);
+    assert.equal(win.BrevoConversationsSetup.visitorId, visitorId);
+    assert.ok(supportChatScript({ ...base, visitorId }).includes(visitorId));
+  }
+});
+
+test("loadSupportChat: the visitorId is never sent in updateIntegrationData (it is a secret)", () => {
+  const { win } = fakeWindow();
+  loadSupportChat({ ...base, visitorId: VID }, win);
+  assert.ok(!JSON.stringify(identifyCalls(win)).includes(VID));
+});
+
+/** Run the inline script against a fake window, as a browser would. */
+function runInline(js, win) {
+  vm.runInNewContext(js, { window: win, document: win.document });
+}
+
+test("supportChatScript: without visitorId the script never touches BrevoConversationsSetup", () => {
+  for (const visitorId of [undefined, "", null]) {
+    assert.ok(!supportChatScript({ ...base, visitorId }).includes("BrevoConversationsSetup"));
+  }
+});
+
+test("supportChatScript: sets visitorId BEFORE the loader script is appended, when run in a page", () => {
+  const { win, appended } = fakeWindow();
+  runInline(supportChatScript({ ...base, visitorId: VID }), win);
+  assert.equal(appended.length, 1);
+  assert.equal(appended[0].src, BREVO_WIDGET_SRC);
+  assert.deepEqual(appended[0].setupWhenAppended, { visitorId: VID });
+  assert.equal(win.BrevoConversationsID, "abc123");
+});
+
+test("supportChatScript: merges visitorId into an existing BrevoConversationsSetup", () => {
+  const { win, appended } = fakeWindow();
+  const existing = { existingSetting: "kept" };
+  win.BrevoConversationsSetup = existing;
+  runInline(supportChatScript({ ...base, visitorId: VID }), win);
+  assert.equal(win.BrevoConversationsSetup, existing);
+  assert.deepEqual(appended[0].setupWhenAppended, { existingSetting: "kept", visitorId: VID });
+});
+
+test("supportChatScript and supportChatTag: a malformed visitorId throws", () => {
+  for (const visitorId of badIds) {
+    assert.throws(() => supportChatScript({ ...base, visitorId }), /visitorId/, String(visitorId));
+    assert.throws(() => supportChatTag({ ...base, visitorId }), /visitorId/, String(visitorId));
+  }
+});
+
+test("supportChatScript: the visitorId is never in the updateIntegrationData payload", () => {
+  const js = supportChatScript({ ...base, visitorId: VID });
+  const payload = js.match(/w\[c\]\('updateIntegrationData',(\{.*\})\);/)[1];
+  assert.ok(!payload.includes(VID));
+  assert.equal(js.split(VID).length - 1, 1, "the id appears exactly once, in the setup");
+});
+
 // --- react.js tripwire (React is not installed, so read the source) ----------
 
 test("react.js loads in an effect and never injects a script", () => {
@@ -200,4 +325,11 @@ test("react.js loads in an effect and never injects a script", () => {
   assert.match(src, /useEffect/);
   assert.match(src, /loadSupportChat/);
   assert.ok(!src.includes("dangerouslySetInnerHTML"), "a script React inserts on the client never runs");
+});
+
+test("react.js passes visitorId to loadSupportChat and re-runs the effect when it changes", () => {
+  const src = readFileSync(new URL("./react.js", import.meta.url), "utf8");
+  assert.match(src, /SupportChat\(\{[^}]*\bvisitorId\b[^}]*\}\)/, "the component takes visitorId");
+  assert.match(src, /loadSupportChat\(\{[^}]*\bvisitorId\b[^}]*\}\)/, "and passes it on");
+  assert.match(src, /\}, \[[^\]]*\bvisitorId\b[^\]]*\]\);/, "it is in the effect's dependencies");
 });
