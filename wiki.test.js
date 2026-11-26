@@ -54,7 +54,8 @@ test("the footer names the short sha, links the repo and says edits are overwrit
   const footer = buildWiki({ repoRoot, sha: SHA })["_Footer.md"];
   assert.ok(footer.includes("`main@259b4e3`"), "short sha, 7 characters");
   assert.ok(!footer.includes(SHA), "not the full sha");
-  assert.ok(footer.includes("https://github.com/01ecommerce/shopify-support-chat"), "links the repo");
+  const links = [...footer.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]);
+  assert.deepEqual(links, ["https://github.com/01ecommerce/shopify-support-chat"], "one link, exactly the repo");
   assert.ok(
     footer.includes("Edit README.md or docs/ in the repository; changes made here are overwritten."),
     "overwritten line",
