@@ -15,13 +15,41 @@ import {
 
 const base = { widgetId: "abc123", app: "example-app", shop: "demo.myshopify.com", merchantName: "Demo Co" };
 
-/** A minimal stand-in for `window` + `document`: enough for the loader, no DOM library. */
-function fakeWindow() {
+const ORIGIN = "https://app.example.com";
+
+/** A minimal stand-in for `window` + `document`: enough for the loader, no DOM library.
+ *  `url` is the path + query + hash of the page; `history.replaceState` rewrites `location` as a
+ *  browser does, and records each call. */
+function fakeWindow(url = "/app") {
   const appended = [];
   const win = {};
+  const location = {};
+  const setUrl = (u) => {
+    const hashAt = u.indexOf("#");
+    const rest = hashAt === -1 ? u : u.slice(0, hashAt);
+    const hash = hashAt === -1 ? "" : u.slice(hashAt);
+    const queryAt = rest.indexOf("?");
+    const search = queryAt === -1 ? "" : rest.slice(queryAt);
+    location.pathname = queryAt === -1 ? rest : rest.slice(0, queryAt);
+    location.search = search === "?" ? "" : search;
+    location.hash = hash === "#" ? "" : hash;
+    location.href = ORIGIN + u;
+  };
+  setUrl(url);
+  win.location = location;
+  win.history = {
+    state: { key: "k1", idx: 0 },
+    calls: [],
+    replaceState(state, title, u) {
+      this.calls.push({ state, title, url: u });
+      setUrl(u);
+    },
+  };
   win.document = {
     head: {
       appendChild: (el) => {
+        // What the widget reads as the current page when its script starts.
+        el.hrefWhenAppended = win.location.href;
         // What the widget would read when its script starts: the setup as it stood at append time.
         const setup = win.BrevoConversationsSetup;
         el.setupWhenAppended = setup === undefined ? undefined : { ...setup };
@@ -32,7 +60,7 @@ function fakeWindow() {
     createElement: (tag) => ({ tag }),
     getElementById: (id) => appended.find((el) => el.id === id) ?? null,
   };
-  return { win, appended };
+  return { win, appended, setUrl };
 }
 
 const identifyCalls = (win) =>
@@ -316,6 +344,163 @@ test("supportChatScript: the visitorId is never in the updateIntegrationData pay
   const payload = js.match(/w\[c\]\('updateIntegrationData',(\{.*\})\);/)[1];
   assert.ok(!payload.includes(VID));
   assert.equal(js.split(VID).length - 1, 1, "the id appears exactly once, in the setup");
+});
+
+// --- Shopify launch credentials are cleared from the address before the widget starts ------
+// The widget reports `location.href` to its vendor as the current page. In an embedded app that URL
+// carries Shopify's launch credentials (`id_token`, `hmac`, `session`, `timestamp`), so both paths
+// clear them with history.replaceState BEFORE the widget script is added, and load nothing if they
+// cannot.
+
+const LAUNCH_URL =
+  "/app?admin_theme=x&embedded=1&hmac=H&host=abc%3D%3D&id_token=eyJa.eyJb.sig&locale=en&session=S" +
+  "&shop=demo.myshopify.com&timestamp=1#frag";
+const CREDENTIAL_PARAM = /(?:^|[?&])(?:id_token|hmac|session|timestamp)=/;
+
+/** Both ways the package starts the widget in a page. */
+const mountPaths = {
+  loadSupportChat: (win, opts = base) => loadSupportChat(opts, win),
+  "inline script": (win, opts = base) => {
+    runInline(supportChatScript(opts), win);
+    return undefined;
+  },
+};
+
+const stripCases = [
+  {
+    name: "T1 the full launch URL loses hmac, id_token, session and timestamp; the rest and the hash stay",
+    url: LAUNCH_URL,
+    expect: "/app?admin_theme=x&embedded=1&host=abc%3D%3D&locale=en&shop=demo.myshopify.com#frag",
+  },
+  {
+    name: "T1b only credentials: the query goes, the path and the hash stay",
+    url: "/app/settings?id_token=eyJa.eyJb.sig&hmac=H#top",
+    expect: "/app/settings#top",
+  },
+  {
+    name: "T2 a percent-encoded key (id%5Ftoken) is dropped",
+    url: "/app?id%5Ftoken=abc&shop=demo.myshopify.com",
+    expect: "/app?shop=demo.myshopify.com",
+  },
+  {
+    name: "T3 a JWT-shaped value under any key is dropped; text that only starts with eyJ is kept",
+    url: "/app?foo=eyJa.eyJb.c&q=eyJustText",
+    expect: "/app?q=eyJustText",
+  },
+  {
+    name: "T4 other pairs are kept byte for byte, in order (no re-encoding)",
+    url: "/app?q=a+b&page=2&example_param=%E2%9C%93&bad=%E0%A4%A&timestamp=1",
+    expect: "/app?q=a+b&page=2&example_param=%E2%9C%93&bad=%E0%A4%A",
+  },
+];
+
+for (const [pathName, mount] of Object.entries(mountPaths)) {
+  for (const c of stripCases) {
+    test(`${pathName}: ${c.name}`, () => {
+      const { win, appended } = fakeWindow(c.url);
+      const result = mount(win);
+      if (pathName === "loadSupportChat") assert.equal(result, true);
+      assert.equal(appended.length, 1, "the widget script is added");
+      assert.equal(appended[0].hrefWhenAppended, ORIGIN + c.expect, "the address the widget sees");
+      assert.equal(win.history.calls.length, 1, "one replaceState");
+      assert.equal(win.history.calls[0].url, c.expect);
+    });
+  }
+
+  test(`${pathName}: T5 replaceState keeps the router's history.state object and passes "" as the title`, () => {
+    const { win } = fakeWindow(LAUNCH_URL);
+    const state = win.history.state;
+    mount(win);
+    assert.equal(win.history.calls.length, 1);
+    assert.equal(win.history.calls[0].state, state, "the same object, not a copy or null");
+    assert.equal(win.history.calls[0].title, "");
+  });
+
+  test(`${pathName}: T6 nothing to clear means no replaceState call, and the widget loads`, () => {
+    const url = "/app?embedded=1&host=abc%3D%3D&shop=demo.myshopify.com&q=eyJustText#frag";
+    const { win, appended } = fakeWindow(url);
+    const result = mount(win);
+    if (pathName === "loadSupportChat") assert.equal(result, true);
+    assert.equal(win.history.calls.length, 0);
+    assert.equal(appended.length, 1);
+    assert.equal(appended[0].hrefWhenAppended, ORIGIN + url);
+  });
+
+  test(`${pathName}: T7 a replaceState that throws loads nothing and identifies no one (fail closed)`, () => {
+    const { win, appended } = fakeWindow(LAUNCH_URL);
+    win.history.replaceState = () => {
+      throw new Error("SecurityError");
+    };
+    const result = mount(win);
+    if (pathName === "loadSupportChat") assert.equal(result, false);
+    assert.equal(appended.length, 0);
+    assert.equal(win.BrevoConversationsID, undefined);
+    assert.equal(identifyCalls(win).length, 0);
+  });
+
+  test(`${pathName}: T8 a replaceState that leaves the address unchanged loads nothing (fail closed)`, () => {
+    const { win, appended } = fakeWindow(LAUNCH_URL);
+    win.history.replaceState = function (state, title, u) {
+      this.calls.push({ state, title, url: u });
+    };
+    const result = mount(win);
+    if (pathName === "loadSupportChat") assert.equal(result, false);
+    assert.equal(win.history.calls.length, 1, "it tried");
+    assert.equal(appended.length, 0);
+    assert.equal(win.BrevoConversationsID, undefined);
+    assert.equal(identifyCalls(win).length, 0);
+  });
+}
+
+test("T9 no widget id: the address is not touched (both paths)", () => {
+  const { win, appended } = fakeWindow(LAUNCH_URL);
+  assert.equal(loadSupportChat({ ...base, widgetId: "" }, win), false);
+  assert.equal(supportChatScript({ ...base, widgetId: "" }), "");
+  assert.equal(win.history.calls.length, 0);
+  assert.equal(win.location.href, ORIGIN + LAUNCH_URL);
+  assert.equal(appended.length, 0);
+});
+
+test("T10 a malformed visitorId throws before the address is touched", () => {
+  const { win, appended } = fakeWindow(LAUNCH_URL);
+  assert.throws(() => loadSupportChat({ ...base, visitorId: "short" }, win), /visitorId/);
+  assert.throws(() => loadSupportChat({ ...base, app: "" }, win), /app/);
+  assert.equal(win.history.calls.length, 0);
+  assert.equal(win.location.href, ORIGIN + LAUNCH_URL);
+  assert.equal(appended.length, 0);
+});
+
+test("T11 loadSupportChat: a later call clears credentials put back in the address, and adds no second script", () => {
+  const { win, appended, setUrl } = fakeWindow(LAUNCH_URL);
+  assert.equal(loadSupportChat(base, win), true);
+  setUrl("/app/other?shop=demo.myshopify.com&id_token=eyJc.eyJd.sig2&embedded=1");
+  assert.equal(loadSupportChat(base, win), true);
+  assert.equal(win.history.calls.length, 2);
+  assert.equal(win.location.href, `${ORIGIN}/app/other?shop=demo.myshopify.com&embedded=1`);
+  assert.ok(!CREDENTIAL_PARAM.test(win.location.search));
+  assert.equal(appended.length, 1);
+  assert.equal(identifyCalls(win).length, 2);
+});
+
+test("T12 the tag stays one script: one </script>, no <!--, and the clearing code appears once, first", () => {
+  const tag = supportChatTag({ ...base, merchantName: "</script><!--<script>x</script>", visitorId: VID });
+  assert.equal(tag.match(/<\/script>/g).length, 1);
+  assert.ok(!tag.includes("<!--"));
+  assert.equal(tag.split("replaceState").length - 1, 1, "the clearing function is inlined exactly once");
+  assert.equal(tag.split('["id_token","hmac","session","timestamp"]').length - 1, 1, "with the credential list");
+  assert.match(
+    supportChatScript(base),
+    /^\(function\(d,w,c\)\{\n\s*if\(!\(function [\s\S]*?\)\(w,\["id_token","hmac","session","timestamp"\]\)\)return;\n\s*w\.BrevoConversationsID=/,
+    "the guard is the first statement, before the widget id is set",
+  );
+});
+
+test("T12b the inline script stays ES5 (it runs as written in any admin browser, no build step)", () => {
+  const js = supportChatScript({ ...base, visitorId: VID });
+  for (const modern of ["=>", "`", "...", /\bconst\b/, /\blet\b/, /\bclass\b/, /\bURL\b/]) {
+    const hit = typeof modern === "string" ? js.includes(modern) : modern.test(js);
+    assert.ok(!hit, `the inline script uses ${modern}`);
+  }
 });
 
 // --- react.js tripwire (React is not installed, so read the source) ----------

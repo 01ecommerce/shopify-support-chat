@@ -69,6 +69,53 @@ function checkVisitorId(visitorId, caller) {
   return visitorId;
 }
 
+/** The query parameters Shopify adds to an embedded app's address when the admin opens it, that are
+ *  credentials: the session token (`id_token`, a JWT), and the launch signature and its inputs. */
+const LAUNCH_CREDENTIALS = ["id_token", "hmac", "session", "timestamp"];
+
+/** The widget reports `location.href` to its vendor as the current page, so the address must not hold
+ *  Shopify's launch credentials when it starts. Drops every query pair whose decoded key is in `names`
+ *  or whose decoded value is shaped like a JWT, keeps every other pair byte for byte and in order, and
+ *  keeps `history.state` (the router's) and the hash. Nothing to drop: no history call.
+ *  Returns false when the address could not be cleared: the caller must then load nothing.
+ *
+ *  Self-contained ES5 with no outer references and no `URL`: `supportChatScript` inlines its source. */
+function stripLaunchCredentials(w, names) {
+  var jwt = /^eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/;
+  function decode(text) {
+    try {
+      return decodeURIComponent(text);
+    } catch (e) {
+      return text;
+    }
+  }
+  function isCredential(pair) {
+    var at = pair.indexOf("=");
+    var key = decode(at === -1 ? pair : pair.slice(0, at));
+    var value = at === -1 ? "" : decode(pair.slice(at + 1));
+    return names.indexOf(key) !== -1 || jwt.test(value);
+  }
+  function pairs() {
+    var search = String((w.location && w.location.search) || "").replace(/^\?/, "");
+    return search === "" ? [] : search.split("&");
+  }
+  var all = pairs();
+  var kept = all.filter(function (pair) {
+    return !isCredential(pair);
+  });
+  if (kept.length === all.length) return true;
+  try {
+    w.history.replaceState(
+      w.history.state,
+      "",
+      w.location.pathname + (kept.length ? "?" + kept.join("&") : "") + w.location.hash
+    );
+  } catch (e) {
+    return false;
+  }
+  return !pairs().some(isCredential);
+}
+
 /** Load the widget from the browser and identify the merchant.
  *  Safe to call on every page load or render: the script is added once, the
  *  merchant is identified again on each call (the widget's cookie can drop
@@ -76,13 +123,19 @@ function checkVisitorId(visitorId, caller) {
  *  `visitorId` goes into `BrevoConversationsSetup` (merged, never replaced) before the script is
  *  added, and only by the call that adds it: Brevo reads its settings when the widget starts, so the
  *  first call in a page sets the id and later calls leave it alone. Nothing calls Brevo's `restart`.
- *  Returns false when there is no `window` (server render) or no widget id. */
+ *  Before the script is added, on every call, Shopify's launch credentials (`id_token`, `hmac`,
+ *  `session`, `timestamp`, and any JWT-shaped value) are cleared from the address with
+ *  `history.replaceState`, because the widget reports the page address to its vendor.
+ *  Returns false when there is no `window` (server render), no widget id, or the address could not be
+ *  cleared (then nothing is loaded and no one is identified). */
 export function loadSupportChat(opts, win = globalThis.window) {
   if (!win) return false;
   const { widgetId } = opts;
   if (!widgetId) return false;
   const visitor = buildVisitor(opts);
   const visitorId = checkVisitorId(opts.visitorId, "loadSupportChat");
+  // Fail closed: if the launch credentials cannot be cleared, nothing loads and no one is identified.
+  if (!stripLaunchCredentials(win, LAUNCH_CREDENTIALS)) return false;
   const doc = win.document;
 
   win.BrevoConversationsID = widgetId;
@@ -107,6 +160,8 @@ export function loadSupportChat(opts, win = globalThis.window) {
 
 /** The inline script body that loads the widget and identifies the merchant.
  *  With `visitorId`, it sets `BrevoConversationsSetup.visitorId` (merged) before adding the script.
+ *  Its first statement clears Shopify's launch credentials from the address, as `loadSupportChat` does,
+ *  and stops (loads nothing) if it cannot.
  *  Returns "" when widgetId is empty, so dev/CI get no bubble. */
 export function supportChatScript(opts) {
   const { widgetId } = opts;
@@ -118,6 +173,7 @@ export function supportChatScript(opts) {
     ? `\n  (w.BrevoConversationsSetup=w.BrevoConversationsSetup||{}).visitorId=${escapeForInlineScript(JSON.stringify(visitorId))};`
     : "";
   return `(function(d,w,c){
+  if(!(${String(stripLaunchCredentials)})(w,${JSON.stringify(LAUNCH_CREDENTIALS)}))return;
   w.BrevoConversationsID=${escapeForInlineScript(JSON.stringify(widgetId))};${setup}
   w[c]=w[c]||function(){(w[c].q=w[c].q||[]).push(arguments)};
   var s=d.createElement('script');s.async=true;

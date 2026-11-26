@@ -24,7 +24,7 @@ or Cursor, in your Shopify app's repository:
 ```text
 Add the Brevo support chat bubble to this Shopify app's admin using the npm package
 @01ecommerce/shopify-support-chat. Install it from the tag tarball:
-https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.0
+https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.1
 Then follow node_modules/@01ecommerce/shopify-support-chat/docs/agent-setup.md exactly, step by step.
 If that file is not there, read it at
 https://github.com/01ecommerce/shopify-support-chat/blob/main/docs/agent-setup.md
@@ -42,7 +42,7 @@ Full guide: [docs/agent-setup.md](https://github.com/01ecommerce/shopify-support
 Install a release tag, not a branch:
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.0
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.1
 ```
 
 Why a tag tarball: a tag does not move, and your lockfile stores an integrity hash of the tarball, so
@@ -97,7 +97,8 @@ loadSupportChat({ widgetId, app: "my-shopify-app", shop, email, merchantName, vi
 ```
 
 Safe to call on every page load. It adds the Brevo script once and identifies the merchant on every
-call. It returns `false` on the server or with an empty `widgetId`.
+call. It returns `false` on the server, with an empty `widgetId`, or when it could not clear Shopify's
+launch credentials from the address (see Privacy); then nothing is loaded.
 
 ### One conversation per app and store: `visitorId`
 
@@ -224,6 +225,27 @@ turning a CSP on.
 
 The widget sends the merchant's chat messages and the visitor properties above to Brevo. List Brevo as a
 subprocessor in your privacy policy before you ship the widget.
+
+The widget also reports the page address to Brevo as the visitor's current page. When the Shopify admin
+opens an embedded app, that address carries launch credentials: `id_token` (a session token), `hmac`,
+`session` and `timestamp`. So before it adds the widget script, on every call, the package clears them
+from the address with `history.replaceState`:
+
+- **Cleared:** every query parameter named `id_token`, `hmac`, `session` or `timestamp` (also when the name
+  is percent-encoded), and any parameter whose value is shaped like a JWT.
+- **Kept, byte for byte and in order:** everything else, such as `shop`, `host`, `embedded`, `locale` and
+  your own parameters, plus the path, the hash and `history.state`. With nothing to clear, history is not
+  touched.
+- **Why reloading still works:** `shop`, `host` and `embedded` stay, so a reload inside the admin frame
+  goes through Shopify's session-token bounce page, and App Bridge supplies a fresh token. The cleared
+  values are only needed at launch; App Bridge mints its own short-lived session tokens afterwards.
+- **Fail closed:** if the address cannot be cleared (`replaceState` throws, or a credential is still there
+  afterwards), the widget is not loaded and the merchant is not identified. `loadSupportChat` returns
+  `false`.
+- **Your router still holds the launch URL.** A client-side router (React Router, Remix, Next.js) keeps
+  its own copy of the location and is not told about the change. Never build a link by copying the
+  current query string (`searchParams`, `location.search`); build it from the parameters you name, or the
+  credentials go back into the address.
 
 ## Safari and iframes
 

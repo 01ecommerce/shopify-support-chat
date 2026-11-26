@@ -5,6 +5,27 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-11-26
+
+### Security
+- **Shopify launch credentials reached the widget's vendor.** The Brevo widget reads `location.href` and
+  reports it to Brevo as the visitor's current page. In an embedded app the document address carries the
+  launch parameters Shopify adds when the admin opens the app: `id_token` (a session token, a JWT that
+  includes the staff user id), `hmac`, `session` and `timestamp`. Every page load that started the widget
+  sent them to Brevo. Reported privately.
+- `loadSupportChat`, `supportChatScript` and `supportChatTag` now clear them from the address with
+  `history.replaceState` before the widget script is added, on every call. They drop every query
+  parameter whose decoded name is `id_token`, `hmac`, `session` or `timestamp`, and any parameter whose
+  value is shaped like a JWT, and keep every other parameter byte for byte and in order (`shop`, `host`,
+  `embedded`, `locale` and the app's own), the path, the hash and `history.state`. With nothing to clear,
+  history is not touched.
+- **Fail closed.** If `replaceState` throws, or the address still holds a credential afterwards,
+  `loadSupportChat` returns `false` and the inline script stops: the widget is not loaded and no one is
+  identified.
+- No option and no export were added; there is no opt-out, because one would reopen the leak. See
+  Privacy in the README for the router caveat. The inline script still escapes every value: the tag
+  holds exactly one `</script>` and no `<!--`.
+
 ## [2.2.0] - 2026-11-25
 
 ### Added

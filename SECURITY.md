@@ -25,6 +25,9 @@ vulnerability is fixed in a patch release and published as a GitHub security adv
 - Any way the package renders the widget somewhere it was not asked to, or loads code from a host other
   than the documented Brevo widget host.
 - Anything in the published tarball that should not be there (a secret, a credential, a private path).
+- **Shopify launch credentials in the page address reaching the widget.** The package clears `id_token`,
+  `hmac`, `session`, `timestamp` and any JWT-shaped value from the address before the widget starts, and
+  loads nothing if it cannot. A way to get one of them to the widget anyway is a vulnerability.
 
 ## Not a vulnerability
 

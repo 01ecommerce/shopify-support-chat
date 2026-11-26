@@ -23,7 +23,7 @@ Check all four. If one is false, stop and ask the developer; do not guess.
 ## Step 1: install the release tag
 
 ```sh
-npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.0
+npm install https://codeload.github.com/01ecommerce/shopify-support-chat/tar.gz/refs/tags/v2.2.1
 ```
 
 Use a **tag** tarball, never a branch and never a `github:` dependency. A tag does not move, and the
@@ -216,6 +216,11 @@ html += supportChatTag({
 `supportChatTag` returns a `<script>` tag, or `""` when `widgetId` is empty. Values are escaped, so a shop
 name cannot break out of the tag. `supportChatScript` returns the same script body without the tag.
 
+Place the tag in `<head>` **after** the `app-bridge.js` script tag
+(`https://cdn.shopify.com/shopifycloud/app-bridge.js`). Shopify requires `app-bridge.js` to be the first
+script that blocks parsing, and this tag is a blocking script. Its first statement clears Shopify's launch
+credentials from the address (see the README's Privacy section) before the widget starts.
+
 ### Plain browser code
 
 ```js
@@ -225,8 +230,9 @@ loadSupportChat({ widgetId, app: "example-app", shop, email, merchantName, visit
 ```
 
 Safe to call on every page load: the Brevo script is added once and the merchant is identified again on
-every call. It returns `false` on the server or with an empty `widgetId`. `visitorId` comes from the
-server (Step 5), for example in the page's server-rendered data.
+every call. It returns `false` on the server, with an empty `widgetId`, or when it could not clear Shopify's
+launch credentials from the address (then nothing is loaded). `visitorId` comes from the server (Step 5),
+for example in the page's server-rendered data.
 
 ## Step 7: Content Security Policy, only if the app sets one
 
@@ -252,6 +258,10 @@ messages and the visitor properties above to Brevo.
 - **Never commit a widget id** into a shared repository.
 - **Never compute the `visitorId` in the browser**, never send the secret to the page, and never use the
   shop domain or any other public value as the `visitorId`.
+- **Never build a URL by copying the current query string** (`searchParams`, `location.search`,
+  `useSearchParams()`). The package clears Shopify's launch credentials (`id_token`, `hmac`, `session`,
+  `timestamp`) from the address, but your router still holds the launch URL; a link copied from it puts
+  them back. Build every link from the parameters you name.
 - **Never hand-edit the GitHub wiki.** It is generated from `README.md` and `docs/`; change those files.
 - Do not add `BREVO_CONVERSATIONS_ID` to the CI environment or to development.
 
@@ -268,6 +278,7 @@ check each item. Report the result of every one, including a FAIL with what you 
 | 4 | Open a storefront page of the shop and view the page source. | It contains no `brevo`. | Any `brevo` text: the widget is on the storefront. Remove it; this fails app review. |
 | 5 | In Safari, open the app, send a message, then reload. | Last name and Notes are still present on the conversation after the reload. | The conversation looks anonymous after the reload (Safari dropped the widget's cookie inside the iframe). Confirm the loader runs on every page load. |
 | 6 | In the same app iframe, evaluate `window.BrevoConversationsSetup.visitorId`. Then, in the same browser, open a **second store** (or a second app that uses this package) and send a message from each. | 32 lowercase hex characters, different per store and per app. In your Brevo inbox the two messages are in **two separate conversations**. | `undefined` (Step 5 not done, or `visitorId` not passed to the component); the same id for two stores (the `shop` passed to `supportChatVisitorId` is not the session's shop); or both messages in one conversation. |
+| 7 | Open the app from the Shopify admin (so the address carries the launch parameters). In devtools, **Network**, filter **WS**, select the widget's WebSocket, open its **Messages**, and find the `updateClientSession` message. Read its `currentPage`. | `currentPage` holds `shop=` and none of `id_token=`, `hmac=`, `session=` or `timestamp=`. | Any of `id_token=`, `hmac=`, `session=` or `timestamp=` in `currentPage`: the package is older than v2.2.1, or a second Brevo snippet starts the widget before the package does. Remove the other snippet and install v2.2.1 or later. |
 
 ## The support-staff rule
 
@@ -279,7 +290,7 @@ are talking to, out of band, before acting on a billing or data request.**
 
 All exports of `@01ecommerce/shopify-support-chat`:
 
-- `loadSupportChat(opts, win?)`: browser loader; returns `false` on the server or with an empty `widgetId`.
+- `loadSupportChat(opts, win?)`: browser loader; returns `false` on the server, with an empty `widgetId`, or when it could not clear Shopify's launch credentials from the address (then it loads nothing). Every call clears them before the widget starts; so does the script from `supportChatTag` and `supportChatScript`.
 - `supportChatTag(opts)`: a `<script>` tag string, or `""` without a `widgetId`.
 - `supportChatScript(opts)`: the inline script body without the tag.
 - `buildVisitor(opts)`: the flat visitor object passed to Brevo's `updateIntegrationData` (`email`, `firstName`, `lastName`, `notes`, `SHOP`, `MERCHANT`, `APP`, `IDENTITY`). Brevo takes only string, number, boolean or `null` values, with custom properties as top-level keys, so nothing is nested ([Brevo's JavaScript API reference](https://developers.brevo.com/docs/javascript-api-reference)); throws without `app`. `lastName` is the `app` and `notes` is `<shop> · UNVERIFIED…`: standard Brevo fields, shown in the conversation's visitor panel. The custom keys did not show in a live run on an account without matching contact attributes; why is not established. Brevo: "If custom properties set in `updateIntegrationData` match existing contact attributes, they sync with your Contacts database. Otherwise, they're available in Conversations only." Creating those attributes has not been tested.

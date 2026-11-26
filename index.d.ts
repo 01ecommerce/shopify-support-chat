@@ -49,8 +49,13 @@ export const IDENTITY_IS_UNVERIFIED: string;
 export function escapeForInlineScript(json: string): string;
 export function buildVisitor(opts: Omit<ChatVisitor, "widgetId"> & { widgetId?: string }): BrevoVisitor;
 /** Browser loader. Returns false on the server or with an empty widgetId. Throws without `app` or with a
- *  malformed `visitorId`. The first call in a page sets `visitorId`; later calls leave it alone. */
+ *  malformed `visitorId`. The first call in a page sets `visitorId`; later calls leave it alone.
+ *  On every call, before the widget script is added, it clears Shopify's launch credentials
+ *  (`id_token`, `hmac`, `session`, `timestamp`, and any JWT-shaped value) from the page address with
+ *  `history.replaceState`, keeping every other parameter, `history.state` and the hash. If they cannot
+ *  be cleared it returns false and loads nothing. */
 export function loadSupportChat(opts: ChatVisitor, win?: ChatWindow | undefined): boolean;
-/** Throws without `app` or with a malformed `visitorId`. */
+/** Throws without `app` or with a malformed `visitorId`. The script first clears Shopify's launch
+ *  credentials from the page address, as `loadSupportChat` does, and loads nothing if it cannot. */
 export function supportChatScript(opts: ChatVisitor): string;
 export function supportChatTag(opts: ChatVisitor): string;
